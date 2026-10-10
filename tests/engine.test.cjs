@@ -1,0 +1,12 @@
+const assert=require('node:assert/strict');const {calculate,returnRate}=require('../dist/engine.js');
+const close=(a,b)=>assert.ok(Math.abs(a-b)<1e-7,`${a} != ${b}`);
+close(returnRate('food','Caerleon',true),47.91666666666667);close(returnRate('refine','Lymhurst',false,'fiber'),36.70886075949367);close(returnRate('bags','Brecilien',false),24.81203007518797);
+const cfg={rrr:50,eff:0,quantity:10,focus:false,unitFee:2,station:300,salePrice:100,saleMode:'sell',tax:4,setup:2.5,discount:5,premiumCost:300,characters:1,cycleDays:3,transport:10,buffer:0,chain:false,startTier:3,chainRrr:50};
+const food={id:'FOOD',kind:'food',output:10,basefocus:2,fee300:2,mats:[{id:'RAW',n:10,returns:true},{id:'ENERGY',n:10,returns:false}]};
+let result=calculate(food,cfg,{recipes:[food]},()=>({price:10,city:'Lymhurst',age:1}));assert.equal(result.bill.find(x=>x.id==='ENERGY').net,10);assert.equal(result.bill.find(x=>x.id==='RAW').net,5);assert.equal(result.materialCost,150);assert.equal(result.fees,20);assert.equal(result.tax,40);assert.equal(result.setup,25);assert.equal(result.premium,30);assert.equal(result.profit,725);assert.equal(result.stress,670.75);
+result=calculate(food,{...cfg,saleMode:'discord'}, {recipes:[food]},()=>({price:10,age:1}));assert.equal(result.tax,0);assert.equal(result.setup,0);assert.equal(result.gross,950);
+const t3={id:'T3_CLOTH',kind:'refine',tier:3,output:1,basefocus:0,fee300:1,mats:[{id:'T3_FIBER',n:2,returns:true},{id:'T2_CLOTH',n:1,returns:true}]};const t4={id:'T4_CLOTH',kind:'refine',tier:4,output:1,basefocus:0,fee300:1,mats:[{id:'T4_FIBER',n:2,returns:true},{id:'T3_CLOTH',n:1,returns:true}]};
+result=calculate(t4,{...cfg,quantity:100,chain:true,unitFee:1},{recipes:[t3,t4]},()=>({price:1,age:1}));assert.equal(result.bill.find(x=>x.id==='T4_FIBER').net,100);assert.equal(result.bill.find(x=>x.id==='T3_FIBER').net,50);assert.equal(result.bill.find(x=>x.id==='T2_CLOTH').net,25);assert.equal(result.fees,150);
+result=calculate(food,{...cfg,focus:true,volumeMode:'focus',focusBudget:45},{recipes:[food]},()=>({price:10,age:1}));assert.equal(result.amount,20);assert.equal(result.focus,40);
+result=calculate(food,cfg,{recipes:[food]},()=>({price:0,age:Infinity}));assert.equal(result.missing,true);assert.equal(result.stale,true);
+console.log('PASS: city returns, non-return energy, focus budget, chain quantities, station, taxes, direct sale, premium, missing prices');
