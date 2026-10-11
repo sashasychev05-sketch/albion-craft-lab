@@ -1,0 +1,16 @@
+(function(){'use strict';
+const $=id=>document.getElementById(id),MM=window.MasteryMath,data=window.MASTERY_DATA;let levels={};try{levels=JSON.parse(localStorage.getItem('albion-character-mastery-v1')||'{}')}catch{}
+const panel=document.createElement('section');panel.id='mastery-panel';panel.className='mastery-panel';document.querySelector('.settings').append(panel);let recipe,cfg,save;
+const fmt=(n,d=0)=>Number(n).toLocaleString('ru-RU',{maximumFractionDigits:d}),esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function persist(){try{localStorage.setItem('albion-character-mastery-v1',JSON.stringify(levels))}catch{}}
+function prepare(r,c){c.masteryLevels=levels;if(c.focusSource==='levels')c.eff=MM.efficiency(r,levels,data)}
+function render(r,c,callback){recipe=r;cfg=c;save=callback;const nodes=MM.applicable(r,data),focus=document.activeElement?.dataset.mastery,open=panel.querySelector('details')?.open;
+ const input=n=>`<label class="field">${esc(n.name)}<span class="mastery-note">${n.own?'Этот предмет':'Общий бонус'} · +${fmt(n.coefficient,1)} эффективности / ур.</span><input data-mastery="${n.id}" aria-label="Уровень ${esc(n.name)}" type="number" min="0" max="${n.maxLevel}" step="1" value="${levels[n.id]||0}"></label>`;
+ panel.hidden=!nodes.length;panel.innerHTML=`<h3>Мастерство и специализации</h3><label class="field">Как определяем расход фокуса<select id="focus-source"><option value="levels">По уровням персонажа</option><option value="manual">Ввести эффективность вручную</option></select></label><div ${c.focusSource==='manual'?'hidden':''}><div class="grid2">${nodes.filter(n=>n.own||n.kind==='mastery').map(input).join('')}</div>${nodes.some(n=>!n.own&&n.kind!=='mastery')?`<details class="fold" ${open?'open':''}><summary>Другие специализации с общим бонусом</summary><div class="grid2 fold-body">${nodes.filter(n=>!n.own&&n.kind!=='mastery').map(input).join('')}</div></details>`:''}<div class="button-row"><button type="button" class="button" data-master-reset="0">Уровни 0</button><button type="button" class="button" data-master-reset="100">Уровни 100</button></div><p class="hint">Уровни сохраняются для персонажа и применяются к другим рецептам. Расход округляется вверх на каждую операцию.</p></div><p class="selected-summary">${fmt(MM.cost(r,c.eff))} фокуса / операция · ${fmt(MM.cost(r,c.eff)/r.output,2)} / предмет</p>`;
+ $('focus-source').value=c.focusSource||'manual';$('eff').readOnly=c.focusSource==='levels';$('eff').value=c.eff; if(focus)panel.querySelector(`[data-mastery="${focus}"]`)?.focus();
+}
+panel.addEventListener('change',e=>{if(e.target.id==='focus-source'){cfg.focusSource=e.target.value;save()}if(e.target.dataset.mastery){const n=data.nodes[e.target.dataset.mastery];levels[n.id]=MM.level(e.target.value,n.maxLevel);persist();save()}});
+panel.addEventListener('input',e=>{if(!e.target.dataset.mastery)return;const n=data.nodes[e.target.dataset.mastery];levels[n.id]=MM.level(e.target.value,n.maxLevel);persist();save()});
+panel.addEventListener('click',e=>{const b=e.target.closest('[data-master-reset]');if(!b)return;MM.applicable(recipe,data).forEach(n=>levels[n.id]=Math.min(n.maxLevel,Number(b.dataset.masterReset)));persist();save()});
+window.MasteryUI={prepare,render,levels:()=>({...levels})};
+})();

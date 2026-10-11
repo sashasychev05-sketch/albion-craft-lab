@@ -1,0 +1,17 @@
+(function(){'use strict';
+const D=window.ALBION_DATA,M=window.MarketGuard,cities=['Bridgewatch','Fort Sterling','Lymhurst','Martlock','Thetford','Caerleon','Brecilien','Black Market'];
+function create(){let seq=0,controller,book={quotes:{},histories:{}},cache=new Map();const key=(server,id,city,q)=>[server,id,city,q].join('|');
+function row(server,id,city,q=1){return book.quotes[key(server,id,city,q)]||window.CraftApp?.quote(server,id,city,q)||(server==='europe'?D.prices[[id,city,q].join('|')]:null)}
+function history(server,id,city,q=1){return book.histories[key(server,id,city,q)]||window.CraftApp?.history(server,id,city,q)||(server==='europe'?D.history[[id,city,q].join('|')]:null)}
+function quote(server,id,city,q=1,bid=false,sale=false){const p=row(server,id,city,q),h=history(server,id,city,q),field=bid?'buy_price_max':'sell_price_min';const peers=cities.filter(c=>c!==city&&c!=='Black Market').map(c=>row(server,id,c,q)).filter(p=>M.age(p?.[field+'_date'])<=24).map(p=>Number(p[field]));let x=M.assess({price:p?.[field],timestamp:p?.[field+'_date'],history:h,peers:city==='Black Market'?[]:peers});const fresh=h?.days>=3&&h.daily>0&&M.age(h.to+'T23:59:59Z')<=72;if(sale&&!fresh)x={...x,price:0,reason:'Нет свежего объёма продаж'};return {...x,daily:fresh?h.daily:0,city,history:h}}
+function cheapest(server,id){return cities.filter(c=>c!=='Black Market').map(c=>quote(server,id,c)).filter(x=>x.price>0).sort((a,b)=>a.price-b.price)[0]||{price:0,city:'Lymhurst',age:Infinity}}
+function cancel(){seq++;controller?.abort()}
+async function load(server,ids,force=false){ids=[...new Set(ids)].sort();const ck=server+'|'+ids.join();if(!ids.length)return '';if(!force&&Date.now()-(cache.get(ck)||0)<300000)return '';cancel();controller=new AbortController();const c=controller,n=seq;const first=new Date(Date.now()-14*86400000).toISOString().slice(0,10),last=new Date(Date.now()-86400000).toISOString().slice(0,10),end=new Date(Date.now()+86400000).toISOString().slice(0,10);let errors=[];
+ const get=async url=>{const r=await fetch(url,{signal:AbortSignal.any([c.signal,AbortSignal.timeout(30000)])});if(!r.ok)throw Error('HTTP '+r.status);return r.json()};
+ for(let offset=0;offset<ids.length;offset+=30){const items=ids.slice(offset,offset+30).map(encodeURIComponent).join(','),prefix='https://'+server+'.albion-online-data.com/api/v2/stats/',params='locations='+encodeURIComponent(cities.join(','))+'&qualities=1,2,3,4,5';const results=await Promise.allSettled([get(prefix+'prices/'+items+'.json?'+params),get(prefix+'history/'+items+'.json?'+params+'&date='+first+'&end_date='+end+'&time-scale=24')]);if(n!==seq)return 'Отменено';
+  if(results[0].status==='fulfilled')for(const p of results[0].value){const k=key(server,p.item_id,p.city,p.quality);book.quotes[k]=M.merge(row(server,p.item_id,p.city,p.quality),p)}else errors.push('Цены недоступны');
+  if(results[1].status==='fulfilled')for(const h of results[1].value){const d=h.data.filter(x=>x.timestamp.slice(0,10)>=first&&x.timestamp.slice(0,10)<=last),count=d.reduce((s,x)=>s+x.item_count,0);book.histories[key(server,h.item_id,h.location,h.quality)]={daily:count/14,avg:count?d.reduce((s,x)=>s+x.item_count*x.avg_price,0)/count:0,days:d.length,from:first,to:last}}else errors.push('История продаж недоступна');
+ }if(!errors.length)cache.set(ck,Date.now());return [...new Set(errors)].join('. ')}
+return {quote,cheapest,history,load,cancel};}
+window.FeatureMarket={create};
+})();

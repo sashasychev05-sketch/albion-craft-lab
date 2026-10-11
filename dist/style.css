@@ -15,3 +15,7 @@
 [data-theme]:not([data-theme=light]) .scenario{background:#262319;border-color:#514c38}[data-theme]:not([data-theme=light]) .notice{background:#30270e;border-color:#6a5726;color:#ffe3a5}
 [data-theme]:not([data-theme=light]) .button.primary{background:#286246;color:#fff}[data-theme]:not([data-theme=light]) .button:hover{background:#34483d}
 [data-theme=black] .projection{background:#101d14}[data-theme=black] .nav.active{background:#1a291e}
+
+.price-status{margin:-4px 0 18px}.price-status .hint{margin:8px 0}.price-cities{display:flex;flex-wrap:wrap;gap:8px}.price-cities .button{font-size:12px;padding:8px 10px;white-space:normal;text-align:left}
+
+#luxury-content[hidden],#craft-content[hidden]{display:none!important}#art-auto{margin:0 0 18px}#art-item{overflow-wrap:anywhere}#art-city-prices small{display:block}#luxury-content .metrics{margin-top:20px}

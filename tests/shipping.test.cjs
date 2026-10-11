@@ -1,0 +1,17 @@
+const assert=require('node:assert/strict'),S=require('../dist/shipping-engine.js');
+const config={enabled:{},routeCosts:{},tax:4,setup:2.5,profitableOnly:true},catalog={meal:{kind:'food'},potion:{kind:'potions'},bag:{kind:'bags'},sword:{kind:'gear',blackMarket:true},tool:{kind:'gear',blackMarket:false}},recipe=id=>catalog[id];
+let items=[{id:'meal',quantity:101,origin:'Lymhurst',destination:'safe',unitCost:10,quality:1}],quote=(item,city)=>({price:100,daily:{Bridgewatch:10,'Fort Sterling':20,Lymhurst:999,Martlock:30,Thetford:40,'Black Market':10}[city]});
+let p=S.calculate(items,config,quote,recipe);assert.equal(p.quantity,101);assert.equal(p.lines.reduce((s,x)=>s+x.quantity,0),101);assert.ok(p.lines.every(x=>S.safeCities.includes(x.city)&&x.city!=='Lymhurst'));assert.deepEqual(p.lines.map(x=>x.quantity),[10,20,30,41]);assert.ok(p.lines.every(x=>x.city!=='Caerleon'&&x.city!=='Brecilien'));
+for(let n=1;n<300;n++){const a=S.apportion(n,[{daily:13},{daily:2},{daily:9},{daily:0}]);assert.equal(a.reduce((s,x)=>s+x.quantity,0),n);assert.ok(a.every(x=>Number.isInteger(x.quantity)&&x.quantity>=0))}
+p=S.calculate(items,{...config,enabled:{Thetford:false}},quote,recipe);assert.equal(p.quantity,101);assert.ok(p.lines.every(x=>x.city!=='Thetford'));
+p=S.calculate([{...items[0],origin:'Caerleon'}],config,quote,recipe);assert.equal(p.quantity,0);assert.equal(p.unallocated,101);
+p=S.calculate(items,config,()=>({price:0,daily:200}),recipe);assert.equal(p.quantity,0);assert.ok(p.excluded.length);p=S.calculate(items,config,()=>({price:100,daily:0}),recipe);assert.equal(p.quantity,0);
+items=[{id:'meal',quantity:10,origin:'Lymhurst',destination:'safe',unitCost:10},{id:'potion',quantity:20,origin:'Lymhurst',destination:'safe',unitCost:20}];
+p=S.calculate(items,{...config,enabled:{'Fort Sterling':false,Martlock:false,Thetford:false},routeCosts:{'Lymhurst → Bridgewatch':50}},quote,recipe);assert.equal(p.routes.length,1);assert.equal(p.routes[0].transport,50);assert.equal(p.profit,30*100*.935-500-50);assert.equal(p.lines.reduce((s,x)=>s+x.transport,0),50);
+const bm={id:'bag',quantity:5,origin:'Lymhurst',destination:'blackMarket',unitCost:10,quality:4};p=S.calculate([bm],config,quote,recipe);assert.equal(p.lines[0].city,'Black Market');assert.equal(p.profit,5*100*.96-50);assert.equal(p.lines[0].share,1);
+p=S.calculate([{...bm,unitCost:1000}],config,quote,recipe);assert.equal(p.quantity,0);assert.equal(p.routes.length,0);assert.equal(p.unallocated,5);
+p=S.calculate([{...bm,unitCost:null}],config,quote,recipe);assert.equal(p.quantity,0);p=S.calculate([{...bm,unitCost:null}],{...config,profitableOnly:false},quote,recipe);assert.equal(p.profit,null);
+p=S.calculate([{...bm,id:'sword',unitCost:0}],config,quote,recipe);assert.equal(p.profit,480);p=S.calculate([{...bm,id:'tool'}],config,quote,recipe);assert.equal(p.quantity,0);p=S.calculate([{...bm,id:'meal'}],config,quote,recipe);assert.equal(p.quantity,0);
+// Removing a loss-making Black Market line recomputes shares of the single route fee.
+p=S.calculate([{...bm,unitCost:0},{...bm,id:'sword',unitCost:1000}],{...config,routeCosts:{'Lymhurst → Caerleon · чёрный рынок':100}},quote,recipe);assert.equal(p.quantity,5);assert.equal(p.profit,380);assert.equal(p.routes[0].transport,100);
+console.log('PASS: exact city shares, multiple goods, safe origins/destinations, missing price/volume guards, route fees once, Black Market bags and loot, positive-profit filter');

@@ -1,0 +1,21 @@
+(function(root){'use strict';
+const safeCities=['Bridgewatch','Fort Sterling','Lymhurst','Martlock','Thetford'];
+function apportion(quantity,candidates){quantity=Math.max(0,Math.floor(Number(quantity)||0));const weights=candidates.filter(x=>Number(x.daily)>0),total=weights.reduce((s,x)=>s+Number(x.daily),0);if(!total)return [];const rows=weights.map((x,i)=>({...x,index:i,share:Number(x.daily)/total,quantity:Math.floor(quantity*Number(x.daily)/total),fraction:quantity*Number(x.daily)/total%1}));let remaining=quantity-rows.reduce((s,x)=>s+x.quantity,0);for(const r of [...rows].sort((a,b)=>b.fraction-a.fraction||a.index-b.index)){if(remaining--<=0)break;r.quantity++}return rows}
+function calculate(items,config,quote,recipeFor){const lines=[],excluded=[];
+ for(const item of items){const recipe=recipeFor(item.id),qty=Math.max(0,Math.floor(Number(item.quantity)||0)),bm=item.destination==='blackMarket',eligibleBM=recipe&&(recipe.kind==='bags'||recipe.kind==='gear'&&recipe.blackMarket);
+  if(!qty){excluded.push({item,reason:'Укажите количество.'});continue}if(bm&&!eligibleBM){excluded.push({item,reason:'Предмет не принимается чёрным рынком.'});continue}
+  if(!bm&&(!['food','potions'].includes(recipe?.kind)||!safeCities.includes(item.origin))){excluded.push({item,reason:'Для безопасного плана выберите еду или зелье и один из пяти королевских городов отправления.'});continue}
+  if(bm&&!safeCities.concat('Caerleon').includes(item.origin)){excluded.push({item,reason:'Укажите город отправления для чёрного рынка.'});continue}
+  const destinations=bm?['Black Market']:safeCities.filter(city=>city!==item.origin&&config.enabled[city]!==false),candidates=destinations.map(city=>({city,...quote(item,city)})).filter(q=>q.price>0&&q.daily>0);
+  if(!candidates.length){excluded.push({item,reason:'Нет проверенной цены и объёма продаж. Обновите рынок или заполните их вручную.'});continue}
+  for(const x of apportion(qty,candidates)){if(!x.quantity)continue;const costKnown=item.unitCost!==null&&item.unitCost!==''&&Number.isFinite(Number(item.unitCost))&&Number(item.unitCost)>=0,net=x.quantity*x.price*(1-(Number(config.tax)+(bm?0:Number(config.setup)))/100);lines.push({...x,item,bm,costKnown,cost:costKnown?x.quantity*Number(item.unitCost):null,net,route:item.origin+' → '+(bm?'Caerleon · чёрный рынок':x.city)});}
+ }
+ function group(active){const grouped=new Map();for(const line of active){if(!grouped.has(line.route))grouped.set(line.route,{name:line.route,city:line.city,bm:line.bm,lines:[],net:0,cost:0,known:true,quantity:0});const route=grouped.get(line.route);route.lines.push(line);route.net+=line.net;route.quantity+=line.quantity;route.known&&=line.costKnown;route.cost+=line.cost||0}
+  const routes=[...grouped.values()];for(const r of routes){r.transport=Math.max(0,Number(config.routeCosts[r.name])||0);r.profit=r.known?r.net-r.cost-r.transport:null;for(const line of r.lines){line.transport=r.transport*line.net/r.net;line.profit=line.costKnown?line.net-line.cost-line.transport:null;line.days=line.quantity/line.daily}}return routes}
+ let active=lines,routes=group(active);
+ if(config.profitableOnly){while(true){const removed=active.filter(x=>x.bm&&(x.profit===null||x.profit<=0));if(!removed.length)break;for(const x of removed)excluded.push({item:x.item,reason:x.profit===null?'Для отбора выгодных позиций нужна закупочная стоимость.':'Продажа на чёрный рынок не покрывает закупку, налог и долю расходов дороги.'});active=active.filter(x=>!removed.includes(x));routes=group(active)}}
+ const visible=[...active].sort((a,b)=>Number(b.bm)-Number(a.bm)||(b.profit??-Infinity)-(a.profit??-Infinity));
+ return {lines:active,visible,routes,excluded,unallocated:excluded.reduce((s,x)=>s+Math.max(0,Math.floor(Number(x.item.quantity)||0)),0),quantity:active.reduce((s,x)=>s+x.quantity,0),net:routes.reduce((s,x)=>s+x.net,0),profit:routes.every(x=>x.known)?routes.reduce((s,x)=>s+x.profit,0):null};
+}
+const api={safeCities,apportion,calculate};root.ShippingMath=api;if(typeof module!=='undefined')module.exports=api;
+})(typeof window!=='undefined'?window:globalThis);
