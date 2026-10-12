@@ -10,10 +10,15 @@ def arr(value):
     return value if isinstance(value, list) else [value] if isinstance(value, dict) else []
 
 raw = json.loads(Path(sys.argv[1]).read_text(encoding='utf-8'))['items']
-names = {x['UniqueName']: (x.get('LocalizedNames') or {}).get('RU-RU') or x['UniqueName']
-         for x in json.loads(Path(sys.argv[2]).read_text(encoding='utf-8'))}
+names = {x['UniqueName']: (x.get('LocalizedNames') or {}).get('RU-RU') or (x.get('LocalizedNames') or {}).get('EN-US') or x['UniqueName']
+         for x in json.loads(Path(sys.argv[2]).read_text(encoding='utf-8'))
+         if (x.get('LocalizedNames') or {}).get('RU-RU') or (x.get('LocalizedNames') or {}).get('EN-US')}
 items = {x['@uniquename']: x for group in raw.values() for x in arr(group) if '@uniquename' in x}
 needed = set()
+def public_item(x):
+    id_ = x.get('@uniquename', '')
+    return x.get('@showinmarketplace') != 'false' and x.get('@shopsubcategory1') != 'questitems' and not re.search(r'(?:_TEST(?:_|$)|_DEBUG|_EXP_TOKEN_)', id_) and (names.get(iid(x)) or names.get(id_, id_)) != id_
+
 def iid(x):
     return x['@uniquename'] + ('@' + x['@enchantmentlevel'] if int(x.get('@enchantmentlevel', 0)) else '')
 def mats(req, key='craftresource'):
@@ -47,13 +52,14 @@ for x in items.values():
                 components = [m for m in mats(req) if re.fullmatch(r'T[2-8]_(?:METALBAR|PLANKS|CLOTH|LEATHER)(?:_LEVEL[1-4])?(?:@[1-4])?', m['id'])]
                 if components:
                     salvage[id_] = components
-    if x.get('@slottype') == 'mount' and reqs and reqs[0].get('craftresource'):
+    if x.get('@slottype') == 'mount' and public_item(x) and reqs and reqs[0].get('craftresource'):
         ms = mats(reqs[0]); grown = next((m['id'] for m in ms if m['id'].endswith('_GROWN')), None)
-        if grown:
-            mounts.append({'id': base, 'name': names.get(base, base), 'grown': grown,
-                           'tier': int(x['@tier']), 'mats': ms, 'nutrition': float(x.get('@nutrition', 0)),
+        if ms:
+            mount_id = iid(x)
+            mounts.append({'id': mount_id, 'name': names.get(mount_id, names.get(base, base)), 'grown': grown,
+                           'tier': int(x['@tier']), 'category': x.get('@shopsubcategory1', ''), 'subCategory': x.get('@shopsubcategory2', ''), 'mountCategory': x.get('@mountcategory', ''), 'quality': int(x.get('@maxqualitylevel', 1)) > 1, 'mats': ms, 'nutrition': float(x.get('@nutrition', 0)),
                            'silver': float(reqs[0].get('@silver', 0))})
-            needed.add(base)
+            needed.add(mount_id)
     if x.get('grownitem') and any(m['grown'] == x['grownitem']['@uniquename'] for m in mounts):
         pass  # Complete after all mount recipes have been read.
     if x.get('@maxfame') and x.get('famefillingmissions'):
@@ -92,9 +98,9 @@ print(json.dumps({k: len(v) for k, v in out.items() if isinstance(v, (list, dict
 
 price_catalog = {}
 for x in items.values():
-    if x.get('@showinmarketplace') == 'false' or not x.get('@shopcategory'):
+    if not public_item(x) or not x.get('@shopcategory'):
         continue
     id_ = iid(x)
     for id_ in [id_] + [x['@uniquename'] + '@' + e['@enchantmentlevel'] for e in arr(x.get('enchantments', {}).get('enchantment'))]:
-        price_catalog[id_] = {'id': id_, 'name': names.get(id_, names.get(x['@uniquename'], id_)), 'tier': int(x.get('@tier', 0)), 'ench': int(id_.split('@')[1]) if '@' in id_ else 0, 'quality': int(x.get('@maxqualitylevel', 1)) > 1}
+        price_catalog[id_] = {'id': id_, 'name': names.get(id_, names.get(x['@uniquename'], id_)), 'tier': int(x.get('@tier', 0)), 'ench': int(id_.split('@')[1]) if '@' in id_ else 0, 'quality': int(x.get('@maxqualitylevel', 1)) > 1, 'category': x.get('@shopcategory', ''), 'subCategory': x.get('@shopsubcategory1', ''), 'detailCategory': x.get('@shopsubcategory2', ''), 'mountCategory': x.get('@mountcategory', '')}
 Path('dist/price-catalog.js').write_text('window.PRICE_CATALOG=' + json.dumps(list(price_catalog.values()), ensure_ascii=False, separators=(',', ':')) + ';\n', encoding='utf-8')
