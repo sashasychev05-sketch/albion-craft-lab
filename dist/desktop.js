@@ -11,6 +11,13 @@
   document.querySelector('.header-actions').append(panel);
   const button = panel.querySelector('button'), status = panel.querySelector('#app-update-status'), progress = panel.querySelector('progress');
   const labels = { idle: 'Проверить обновления', current: 'Проверить обновления', checking: 'Проверка…', available: 'Скачать обновление', downloading: 'Загрузка…', ready: 'Обновить и перезапустить', installing: 'Установка…', error: 'Повторить проверку', development: 'Проверить обновления' };
+  let statusTimer;
+  function showStatus(message, temporary = false) {
+    clearTimeout(statusTimer);
+    status.textContent = message || '';
+    status.hidden = !message;
+    if (message && temporary) statusTimer = setTimeout(() => { status.textContent = ''; status.hidden = true; }, 4000);
+  }
   function paint(state) {
     panel.querySelector('#app-version').textContent = 'v' + state.currentVersion;
     button.textContent = labels[state.phase] || labels.idle;
@@ -18,13 +25,13 @@
     progress.hidden = state.phase !== 'downloading';
     progress.value = state.percent || 0;
     const messages = { idle: '', checking: 'Ищем новую версию…', current: 'Установлена последняя версия', available: 'Доступна версия ' + state.version, downloading: 'Версия ' + state.version + ' · ' + state.percent + '%', ready: 'Версия ' + state.version + ' готова. Настройки сохранятся.', installing: 'Программа перезапустится после установки.', error: state.message, development: state.message };
-    status.textContent = messages[state.phase] || '';
+    showStatus(messages[state.phase], ['current', 'development'].includes(state.phase));
   }
   window.DesktopApp.onUpdate(paint);
-  window.DesktopApp.updates().then(paint).catch(() => { status.textContent = 'Не удалось проверить состояние обновлений.'; });
+  window.DesktopApp.updates().then(paint).catch(() => { showStatus('Не удалось проверить состояние обновлений.'); });
   button.addEventListener('click', async () => {
     button.disabled = true;
     try { paint(await window.DesktopApp.update()); }
-    catch { status.textContent = 'Не удалось обновить приложение. Повторите попытку.'; button.disabled = false; }
+    catch { showStatus('Не удалось обновить приложение. Повторите попытку.'); button.textContent = labels.error; button.disabled = false; }
   });
 })();

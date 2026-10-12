@@ -1,6 +1,7 @@
 (function(root){'use strict';
 const level=(x,max=100)=>Math.min(max,Math.max(0,Math.floor(Number(x)||0))),base=r=>r.id.split('@')[0];
-function matches(id,patterns){return patterns.some(p=>new RegExp('^'+p.replace(/[.+^${}()|[\]\\]/g,'\\$&').replace(/\?/g,'.').replace(/\*/g,'.*')+'$').test(id))}
+const patternCache=new Map();
+function matches(id,patterns){return patterns.some(p=>{if(!patternCache.has(p))patternCache.set(p,new RegExp('^'+p.replace(/[.+^${}()|[\]\\]/g,'\\$&').replace(/\?/g,'.').replace(/\*/g,'.*')+'$'));return patternCache.get(p).test(id)})}
 function applicable(r,data){return Object.values(data.nodes).map(n=>({...n,coefficient:n.bonuses.filter(b=>r.tier>=b.minTier&&r.tier<=b.maxTier&&matches(base(r),b.patterns)).reduce((s,b)=>s+b.coefficient,0),own:matches(base(r),n.patterns)})).filter(n=>n.coefficient>0).sort((a,b)=>Number(b.kind==='mastery')-Number(a.kind==='mastery')||Number(b.own)-Number(a.own)||a.name.localeCompare(b.name,'ru'))}
 function efficiency(r,levels,data){return applicable(r,data).reduce((s,n)=>s+level(levels[n.id],n.maxLevel)*n.coefficient,0)}
 function cost(r,eff){return Math.ceil(r.basefocus*r.output*2**(-(Number(eff)||0)/10000)-1e-9)}

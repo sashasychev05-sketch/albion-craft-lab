@@ -8,7 +8,7 @@ async function run(window, updates, folder) {
   window.webContents.setBackgroundThrottling(false);
   const timeout = setTimeout(() => { console.error('Diagnostics timed out'); require('electron').app.exit(1); }, 90000);
   const errors = [];
-  window.webContents.on('console-message', event => { if (event.level === 'error') errors.push(event.message); });
+  window.webContents.on('console-message', event => { if (event.level === 'error') { errors.push(event.message); fs.writeFileSync(path.resolve(folder, 'renderer-errors.json'), JSON.stringify(errors)); } });
   await once(window.webContents, 'did-finish-load');
   const result = await window.webContents.executeJavaScript(`(() => {
     const snapshot = CraftApp.snapshot();
@@ -44,6 +44,9 @@ async function run(window, updates, folder) {
   result.islands = await require('./island-diagnostics.cjs').run(window, folder);
   result.economy = await require('./economy-diagnostics.cjs').run(window, folder);
   result.gameUI = await require('./game-ui-diagnostics.cjs').run(window, folder);
+  result.characterPicker = await require('./character-picker-diagnostics.cjs').run(window, folder);
+  result.searchSale = await require('./search-sale-diagnostics.cjs').run(window, folder);
+  result.blockFolds = await require('./block-folds-diagnostics.cjs').run(window, folder);
   result.csp = await window.webContents.executeJavaScript("fetch(location.href).then(r => r.headers.get('content-security-policy'))");
   assert.ok(result.csp.includes("script-src 'self'"));
   await window.webContents.executeJavaScript("localStorage.setItem('desktop-diagnostics', 'persisted'); document.querySelector('button.nav[data-mode=character]').click();");
@@ -56,6 +59,11 @@ async function run(window, updates, folder) {
     const state = await updates.action();
     assert.ok(['current', 'available'].includes(state.phase), JSON.stringify(state));
     result.releaseCheck = state;
+    if (state.phase === 'current') {
+      await new Promise(resolve => setTimeout(resolve, 4200));
+      result.updateNoticeDismissed = await window.webContents.executeJavaScript("document.getElementById('app-update-status').hidden");
+      assert.equal(result.updateNoticeDismissed, true);
+    }
   }
   if (process.argv.includes('--download-release')) {
     const { autoUpdater } = require('electron-updater');

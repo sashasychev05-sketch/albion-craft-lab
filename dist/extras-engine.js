@@ -19,6 +19,6 @@ function conversion(source,target,quantity,data){
  }
  const path=solve(target,n,new Set());return path?{source,target,quantity:n,...path}:null;
 }
-function compare(target,quantity,data,quote){return ancestors(target,data).map(source=>{const route=conversion(source,target,quantity,data),price=num(quote(source).price);return {...route,price,valid:price>0,cost:route.sourceCount*price+route.silver}}).sort((a,b)=>Number(b.valid)-Number(a.valid)||a.cost-b.cost)}
+function compare(target,quantity,data,quote){return ancestors(target,data).map(source=>{const route=conversion(source,target,quantity,data),price=num(quote(source).price);return {...(route||{source,target,quantity:0,sourceCount:0,silver:0,steps:[]}),price,valid:!!route&&price>0,cost:route?route.sourceCount*price+route.silver:0}}).sort((a,b)=>Number(b.valid)-Number(a.valid)||a.cost-b.cost)}
 const api={refining,ancestors,conversion,compare};root.RefiningMath=api;root.TransmutationMath=api;if(typeof module!=='undefined')module.exports=api;
 })(typeof window!=='undefined'?window:globalThis);

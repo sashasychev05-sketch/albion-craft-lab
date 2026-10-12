@@ -24,6 +24,8 @@
    return g;
   }).sort((a,b)=>a.name.localeCompare(b.name,'ru'));
  }
+ // Representative recipes supply mastery-card icons; the item picker needs every matching variant.
+ function previewRecipes(category,branch,groups,recipes,math){const patterns=groups.filter(g=>g.category===category&&(!branch||branch==='all'||g.id===branch)).flatMap(g=>g.nodes.flatMap(n=>n.patterns));return recipes.filter(r=>math.matches(r.id.split('@')[0],patterns));}
  function prepare(recipe,config,levels,data,math){config.masteryLevels=levels;if(config.focusSource!=='manual'||!config.explicitManualFocus){config.focusSource='levels';config.eff=math.efficiency(recipe,levels,data)}return config}
- const api={categories,normalize,catalog,prepare};root.MasteryProfile=api;if(typeof module!=='undefined')module.exports=api;
+ const api={categories,normalize,catalog,previewRecipes,prepare};root.MasteryProfile=api;if(typeof module!=='undefined')module.exports=api;
 })(typeof window!=='undefined'?window:globalThis);

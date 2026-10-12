@@ -39,21 +39,21 @@ $('craft-category').innerHTML=['Оружие','Броня','Другие вещ�
 function modeRecipes(){return D.recipes.filter(r=>(r.kind===state.mode||state.mode==='gear'&&r.kind==='bags')&&(state.mode!=='gear'||(r.kind==='bags'?'bag':r.category)===$('craft-category').value))}
 function recipeOptions(preferred=productKey(currentRecipe||modeRecipes()[0])){
  const search=$('search').value.trim().toLocaleLowerCase('ru');
- const groups=[...new Set(modeRecipes().map(productKey))].filter(key=>modeRecipes().some(r=>productKey(r)===key&&(productNames[key]+' '+r.name+' '+r.id+' '+r.tier+'.'+r.ench).toLocaleLowerCase('ru').includes(search)));
+ const groups=[...new Set(modeRecipes().map(productKey))].filter(key=>modeRecipes().some(r=>productKey(r)===key&&window.CatalogMath.searchMatch(r,search)));
  $('product').innerHTML=groups.map(key=>`<option value="${esc(key)}">${esc(productNames[key]||key)}</option>`).join('');
  if(groups.includes(preferred))$('product').value=preferred;
  $('product').disabled=!groups.length;$('product-empty').hidden=!!groups.length;
  variantOptions(currentRecipe);
 }
 function variantOptions(preferred=currentRecipe){
- const recipes=modeRecipes().filter(r=>productKey(r)===$('product').value);
+ const recipes=modeRecipes().filter(r=>productKey(r)===$('product').value&&window.CatalogMath.searchMatch(r,$('search').value));
  const tiers=[...new Set(recipes.map(r=>r.tier))].sort((a,b)=>a-b);
  $('tier').innerHTML=tiers.map(t=>`<option value="${t}">T${t}</option>`).join('');
  if(tiers.includes(preferred?.tier))$('tier').value=preferred.tier;
  enchantmentOptions(preferred);
 }
 function enchantmentOptions(preferred=currentRecipe){
- const recipes=modeRecipes().filter(r=>productKey(r)===$('product').value&&r.tier===Number($('tier').value));
+ const recipes=modeRecipes().filter(r=>productKey(r)===$('product').value&&r.tier===Number($('tier').value)&&window.CatalogMath.searchMatch(r,$('search').value));
  $('enchantment').innerHTML=recipes.sort((a,b)=>a.ench-b.ench).map(r=>`<option value="${r.ench}">${r.ench===0?'Без зачарования (.0)':'Зачарование .'+r.ench}</option>`).join('');
  if(recipes.some(r=>r.ench===preferred?.ench))$('enchantment').value=preferred.ench;
  $('tier').disabled=!recipes.length;$('enchantment').disabled=recipes.length<=1;
@@ -61,7 +61,7 @@ function enchantmentOptions(preferred=currentRecipe){
 function pickedRecipe(){return modeRecipes().find(r=>productKey(r)===$('product').value&&r.tier===Number($('tier').value)&&r.ench===Number($('enchantment').value))}
 function syncRecipePicker(){if(state.mode==='gear')$('craft-category').value=currentRecipe.kind==='bags'?'bag':currentRecipe.category;$('recipe-method').innerHTML=(currentRecipe.alternatives||[]).map((a,i)=>`<option value="${i}">${esc(a.label)}</option>`).join('');$('recipe-method').value=String(cfg.recipeIndex);$('recipe-method-wrap').hidden=state.mode!=='gear'||(currentRecipe.alternatives?.length||0)<2;
  const key=productKey(currentRecipe);
- if($('search').value&&!modeRecipes().some(r=>productKey(r)===key&&(productNames[key]+' '+r.name+' '+r.id+' '+r.tier+'.'+r.ench).toLocaleLowerCase('ru').includes($('search').value.trim().toLocaleLowerCase('ru'))))$('search').value='';
+ if($('search').value&&!modeRecipes().some(r=>productKey(r)===key&&window.CatalogMath.searchMatch(r,$('search').value)))$('search').value='';
  recipeOptions(key);
  $('recipe').innerHTML=`<option value="${esc(currentRecipe.id)}">${esc(currentRecipe.name)}</option>`;
  $('selected-recipe').textContent=currentRecipe.name+' · '+currentRecipe.tier+'.'+currentRecipe.ench;
@@ -103,7 +103,7 @@ function render(){window.MasteryUI.prepare(currentRecipe,cfg);window.MasteryUI.r
 
 }
 for(const[id,key]of Object.entries(fields))$(id).addEventListener($(id).type==='number'?'input':'change',()=>{const x=$(id);cfg[key]=x.type==='checkbox'?x.checked:x.tagName==='SELECT'&&!['start-tier'].includes(id)?x.value:Math.max(0,Number(x.value)||0);if(id==='sauce-target')cfg.sauceTarget=x.value===''?null:cfg.sauceTarget;if(id==='hideout-return')cfg.hideoutBaseReturn=x.value===''?null:Math.min(95,cfg.hideoutBaseReturn);if(id==='rrr'||id==='chain-rrr')cfg[key]=Math.min(95,cfg[key]);if(['craft-city','craft-place','hideout-return','daily-bonus','use-focus'].includes(id))automaticReturn();if(id==='rrr')cfg.manualReturn=true;if(['craft-city','craft-place'].includes(id)){const savedFee=state.stationTariffs?.[tariffKey()];if(savedFee!==undefined){cfg.station=savedFee;$('station').value=savedFee}}if(id==='premium'){cfg.tax=cfg.premium?4:8;$('tax').value=cfg.tax}if(id==='sell-city'||id==='sale-mode'||id==='quality')saleFromMarket();if(id==='sale-price')cfg.manualSale=Number(x.value)>0;if(['craft-city','craft-place','hideout-return','daily-bonus','rrr','station','use-focus','volume-mode','focus-budget','quantity','premium','tax','setup','quality'].includes(id))rememberStation();persist();render();if(['quality','chain','start-tier','use-focus','recipe-method','make-sauce'].includes(id))scheduleMarketRefresh()});
-$ ('craft-category').onchange=()=>{$('search').value='';recipeOptions();const r=pickedRecipe();if(r)chooseRecipe(r.id)};document.querySelectorAll('button[data-mode]').forEach(b=>b.onclick=()=>switchMode(b.dataset.mode));$('search').oninput=()=>{recipeOptions();const r=pickedRecipe();if(r&&productKey(r)!==productKey(currentRecipe))chooseRecipe(r.id)};$('product').onchange=()=>{variantOptions();const r=pickedRecipe();if(r)chooseRecipe(r.id)};$('tier').onchange=()=>{enchantmentOptions();const r=pickedRecipe();if(r)chooseRecipe(r.id)};$('enchantment').onchange=()=>{const r=pickedRecipe();if(r)chooseRecipe(r.id)};$('recipe').onchange=()=>chooseRecipe($('recipe').value);$('craft-city').innerHTML=cities.map(c=>`<option>${c}</option>`).join('');$('server').value=state.server;
+$ ('craft-category').onchange=()=>{$('search').value='';recipeOptions();const r=pickedRecipe();if(r)chooseRecipe(r.id)};document.querySelectorAll('button[data-mode]').forEach(b=>b.onclick=()=>switchMode(b.dataset.mode));$('search').oninput=()=>{recipeOptions();const r=pickedRecipe();if(r&&r.id!==currentRecipe.id)chooseRecipe(r.id)};$('product').onchange=()=>{variantOptions();const r=pickedRecipe();if(r)chooseRecipe(r.id)};$('tier').onchange=()=>{enchantmentOptions();const r=pickedRecipe();if(r)chooseRecipe(r.id)};$('enchantment').onchange=()=>{const r=pickedRecipe();if(r)chooseRecipe(r.id)};$('recipe').onchange=()=>chooseRecipe($('recipe').value);$('craft-city').innerHTML=cities.map(c=>`<option>${c}</option>`).join('');$('server').value=state.server;
  let refreshSeq=0,refreshTimer=null,refreshController=null,loadingKey=null;
  const fetchedMarkets=new Map();
  function marketIds(){return [...new Set([currentRecipe.id,...lastResult.bill.map(m=>m.id),...(cfg.withJournals&&lastResult.journals?.supported?[lastResult.journals.empty,lastResult.journals.full]:[]),...window.HeartsUI.marketIds(lastResult),...window.FoodSauceUI.marketIds(currentRecipe,cfg,D)])]}
