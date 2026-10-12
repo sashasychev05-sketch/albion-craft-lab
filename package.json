@@ -1,0 +1,35 @@
+{
+  "name": "albion-craft-lab",
+  "version": "1.0.0",
+  "description": "Калькулятор крафта и перевозок Albion Online",
+  "author": "Albion Craft Lab",
+  "main": "desktop/main.cjs",
+  "repository": { "type": "git", "url": "https://github.com/sashasychev05-sketch/albion-craft-lab.git" },
+  "scripts": {
+    "postinstall": "install-electron",
+    "start": "electron .",
+    "test": "node --test tests/*.test.cjs",
+    "build:win": "electron-builder --win nsis --x64 --publish never"
+  },
+  "dependencies": { "electron-updater": "6.8.9" },
+  "devDependencies": { "electron": "44.7.0", "electron-builder": "26.15.3" },
+  "build": {
+    "appId": "com.albioncraftlab.desktop",
+    "productName": "Albion Craft Lab",
+    "directories": { "output": "release", "buildResources": "desktop/assets" },
+    "files": ["dist/**/*", "desktop/**/*.cjs", "desktop/assets/icon.ico", "package.json"],
+    "asar": true,
+    "publish": [{ "provider": "github", "owner": "sashasychev05-sketch", "repo": "albion-craft-lab", "releaseType": "release" }],
+    "win": { "target": ["nsis"], "icon": "desktop/assets/icon.ico", "artifactName": "Albion-Craft-Lab-Setup-${version}-${arch}.${ext}" },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Albion Craft Lab",
+      "deleteAppDataOnUninstall": false,
+      "installerLanguages": ["ru_RU", "en_US"]
+    }
+  }
+}

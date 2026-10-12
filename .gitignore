@@ -4,3 +4,7 @@ node_modules/
 .openai/runtime/
 .openai/credentials/
 .DS_Store
+release/
+work/
+*.exe
+*.blockmap

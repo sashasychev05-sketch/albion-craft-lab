@@ -1,0 +1,32 @@
+name: Windows release
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - name: Build installer
+        run: npm run build:win
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - name: Publish release
+        shell: pwsh
+        run: |
+          $version = (Get-Content package.json | ConvertFrom-Json).version
+          $tag = "v$version"
+          gh release view $tag --repo $env:GITHUB_REPOSITORY 2>$null
+          if ($LASTEXITCODE -ne 0) { gh release create $tag --repo $env:GITHUB_REPOSITORY --title "Albion Craft Lab $version" --generate-notes }
+          gh release upload $tag release/*.exe release/*.blockmap release/latest.yml --repo $env:GITHUB_REPOSITORY --clobber
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
