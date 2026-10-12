@@ -18,12 +18,12 @@
   const c={...defaults(r),...S.clone(record.config)};window.MasteryUI.prepare(r,c);
   const row=(id,city,q)=>market?market.row(record.server,id,city,q):quoteRow(id,city,q);
   const hist=(id,city,q)=>market?market.history(record.server,id,city,q):history(id,city,q);
-  function price(id,city,q=1,mode='sell'){
+  function price(id,city,q=1,mode='sell',useBook=true){
    const p=row(id,city,q),h=hist(id,city,q),field=mode==='buy'?'buy_price_max':'sell_price_min';
    const peers=cities.filter(x=>x!==city).map(x=>row(id,x,q)).filter(x=>M.age(x?.[field+'_date'])<=24).map(x=>Number(x[field]));
-   return {...M.assess({price:mode==='discord'?h?.avg:p?.[field],timestamp:p?.[field+'_date'],history:h,peers,historical:mode==='discord'}),city};
+   const assessed={...M.assess({price:mode==='discord'?h?.avg:p?.[field],timestamp:p?.[field+'_date'],history:h,peers,historical:mode==='discord'}),city};return useBook&&window.PriceBook?window.PriceBook.resolve(record.server,id,city,q,'buy',assessed,p?.[field+'_date']):assessed;
   }
-  if(!c.manualSale){const sale=price(r.id,c.sellCity,Number(c.quality||1),c.saleMode),h=hist(r.id,c.sellCity,Number(c.quality||1));c.salePrice=sale.price&&h?.days>=3&&h.daily>=1&&M.age(h.to+'T23:59:59Z')<=72?sale.price:0;}
+  if(!c.manualSale){const quality=Number(c.quality||1),sale=price(r.id,c.sellCity,quality,c.saleMode,false),h=hist(r.id,c.sellCity,quality);let assessed={...sale,price:sale.price&&h?.days>=3&&h.daily>=1&&M.age(h.to+'T23:59:59Z')<=72?sale.price:0};if(c.saleMode!=='discord'&&window.PriceBook)assessed=window.PriceBook.resolve(record.server,r.id,c.sellCity,quality,c.saleMode==='buy'?'bid':'sell',assessed,row(r.id,c.sellCity,quality)?.[(c.saleMode==='buy'?'buy_price_max':'sell_price_min')+'_date']);c.salePrice=assessed.price;}
   const quote=(id,material)=>{
    material=material||r.alternatives?.[Number(c.recipeIndex||0)]?.mats.find(x=>x.id===id)||r.mats.find(x=>x.id===id);
    const q=material?.preserveQuality?Number(c.quality||1):1,override=record.overrides[id+(q>1?'|q'+q:'')];

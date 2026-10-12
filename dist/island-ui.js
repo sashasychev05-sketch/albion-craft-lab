@@ -21,7 +21,7 @@
  function message(text){$('island-message').textContent=text;}
  function read(){plan=current().plan;}
  function save(){try{store.save(state.server,plan);message('Настройки острова сохранены.');return true;}catch(error){message(error.message+' Изменения не сохранены.');return false;}}
- function quote(id,side,city,saleMode=plan.saleMode){const q=market.quote(state.server,id,city,1,side==='sell'&&saleMode==='instant',side==='sell'),h=market.history(state.server,id,city,1);if(side==='sell'&&!(h?.days>=3&&h.daily>=1&&window.MarketGuard.age(h.to+'T23:59:59Z')<=72))return {...q,price:0,reason:'Нет свежего объёма продаж'};return q;}
+ function quote(id,side,city,saleMode=plan.saleMode){const q=market.quote(state.server,id,city,1,side==='sell'&&saleMode==='instant',side==='sell'),h=market.history(state.server,id,city,1);if(side==='sell'&&!q.manual&&!(h?.days>=3&&h.daily>=1&&window.MarketGuard.age(h.to+'T23:59:59Z')<=72))return {...q,price:0,reason:'Нет свежего объёма продаж'};return q;}
  const calc=p=>E.calculate(p,D,quote,profile());
  function rowField(label,group,r,key,value,max=1e12,step='0.01'){return '<label class="field">'+label+'<input type="number" min="0" max="'+max+'" step="'+step+'" data-island-group="'+group+'" data-uid="'+r.uid+'" data-field="'+key+'" value="'+esc(value??'')+'"></label>';}
  function rowSelect(label,group,r,key,options,value){return '<label class="field">'+label+'<select data-island-group="'+group+'" data-uid="'+r.uid+'" data-field="'+key+'">'+options.map(([v,n])=>'<option value="'+esc(v)+'" '+(v===value?'selected':'')+'>'+esc(n)+'</option>').join('')+'</select></label>';}

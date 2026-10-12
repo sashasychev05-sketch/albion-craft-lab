@@ -9,8 +9,8 @@ function calculate(recipe,cfg,data,quote){
  const alternative=recipe.alternatives?.[Math.max(0,Math.floor(number(cfg.recipeIndex)))];if(alternative)recipe={...recipe,mats:alternative.mats};
  const equipment=recipe.kind==='bags'||recipe.kind==='gear';
  const progressive=recipe.kind==='bags'&&cfg.refineSteps&&typeof cfg.refineSteps==='object';
- const q=1-Math.min(.95,Math.max(0,number(cfg.rrr)/100));const efficiency=r=>cfg.focusSource==='levels'&&root.MasteryMath&&root.MASTERY_DATA?root.MasteryMath.efficiency(r,cfg.masteryLevels||{},root.MASTERY_DATA):number(cfg.eff);const eff=efficiency(recipe);const perOp=Math.ceil(recipe.basefocus*recipe.output*2**(-eff/10000)-1e-9);
- const ops=(recipe.kind==='food'||recipe.kind==='potions'||recipe.kind==='gear')&&cfg.focus&&cfg.volumeMode==='focus'?Math.floor(number(cfg.focusBudget)/Math.max(1,perOp)):Math.floor(number(cfg.quantity)/recipe.output);
+ const q=1-Math.min(.95,Math.max(0,number(cfg.rrr)/100));const efficiency=r=>cfg.focusSource==='levels'&&root.MasteryMath&&root.MASTERY_DATA?root.MasteryMath.efficiency(r,cfg.masteryLevels||{},root.MASTERY_DATA):number(cfg.eff);const eff=efficiency(recipe);const operationFocus=r=>cfg.focusSource==='levels'&&number(cfg.focusOverrides?.[r.id])>0?Math.ceil(number(cfg.focusOverrides[r.id])):Math.ceil(r.basefocus*r.output*2**(-efficiency(r)/10000)-1e-9);const perOp=operationFocus(recipe);
+ const ops=(recipe.kind==='food'||recipe.kind==='potions'||recipe.kind==='gear'||recipe.kind==='bags')&&cfg.focus&&cfg.volumeMode==='focus'&&perOp>0?Math.floor(number(cfg.focusBudget)/Math.max(1,perOp)):Math.floor(number(cfg.quantity)/recipe.output);
  const amount=Math.max(0,ops)*recipe.output;const mats=new Map(),stages=[],saucePlans=[],refiningPlans=[];let fees=0,focus=0,rootMats=recipe.mats;
  function add(i,n,returns,meta){const x=mats.get(i)||{id:i,net:0,preserveQuality:!!meta?.preserveQuality};x.net+=n;mats.set(i,x);}
  function ingredient(id,n){
@@ -22,7 +22,7 @@ function calculate(recipe,cfg,data,quote){
  function expand(r,out,rrq,recursive){
   const refining=root.RefiningMath?.refining(r,out,rrq,cfg,data,quote);if(refining){refiningPlans.push(refining);r={...r,mats:refining.mats};if(r.id===recipe.id)rootMats=r.mats;}
   fees+=out*(r.id===recipe.id?number(cfg.unitFee):number(r.fee300))*number(r.id===recipe.id?cfg.station:cfg.chainStation??cfg.station)/300;
-  if(cfg.focus&&(!equipment||r.id===recipe.id))focus+=Math.ceil(out/r.output)*Math.ceil(r.basefocus*r.output*2**(-efficiency(r)/10000)-1e-9);
+  if(cfg.focus&&(!equipment||r.id===recipe.id))focus+=Math.ceil(out/r.output)*operationFocus(r);
   stages.push({id:r.id,amount:out});
   for(const m of r.mats){const n=out/r.output*m.n*(m.returns?rrq:1);const sauce=recipe.kind==='food'&&cfg.makeSauce&&data.fishSauce?.sauces[m.id];if(sauce){const fish=data.fishSauce.fish.find(f=>f.id===cfg.sauceFish)||data.fishSauce.fish[0];const plan=root.FishSauceMath.production(sauce,n,fish,cfg.buffer);saucePlans.push(plan);add(fish.id,plan.fishNeeded,false);add('T1_SEAWEED',plan.seaweedNeeded,false);fees+=plan.fees;stages.push({id:sauce.id,amount:plan.sauceCount},{id:'T1_FISHCHOPS',amount:plan.chops});continue;}if(recipe.kind==='food'&&data.foodIngredients?.[m.id]&&cfg.foodIngredientSteps?.[m.id]===true){ingredient(m.id,n);continue;}const child=data.recipes.find(x=>x.kind==='refine'&&x.id===m.id);if(child&&(progressive?cfg.refineSteps[child.id]===true:recursive&&child.tier>=number(cfg.startTier)))expand(child,n,equipment?1-number(cfg.chainRrr)/100:rrq,true);else add(m.id,n,m.returns,m);}
  }

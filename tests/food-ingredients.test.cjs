@@ -9,7 +9,7 @@ let r=calc('T8_MEAL_STEW',{});assert.deepEqual(amounts(r),{T8_PUMPKIN:36,T4_BREA
 r=calc('T8_MEAL_STEW',{T4_BREAD:true});assert.deepEqual(amounts(r),{T8_PUMPKIN:36,T3_FLOUR:36,T8_MEAT:72});assert.equal(r.focus,baseFocus);assert.equal(r.fees,20*194.4+36*13.5);
 r=calc('T8_MEAL_STEW',{T4_BREAD:true,T3_FLOUR:true});assert.deepEqual(amounts(r),{T8_PUMPKIN:36,T3_WHEAT:36,T8_MEAT:72});assert.equal(r.fees,20*194.4+72*13.5);
 r=calc('T8_MEAL_STEW',{T3_FLOUR:true});assert.ok(r.bill.some(m=>m.id==='T4_BREAD'));assert.ok(!r.bill.some(m=>m.id==='T3_WHEAT'));
-r=calc('T8_MEAL_SANDWICH',{T8_BUTTER:true});assert.deepEqual(amounts(r),{T4_BREAD:36,T8_MEAT:72,T8_MILK:18});assert.equal(r.focus,2*494);
+r=calc('T8_MEAL_SANDWICH',{T8_BUTTER:true});assert.deepEqual(amounts(r),{T4_BREAD:36,T8_MEAT:72,T8_MILK:18});assert.equal(r.focus,20*494);
 r=calc('T8_MEAL_STEW',{T8_MEAT:true});assert.deepEqual(amounts(r),{T8_PUMPKIN:36,T4_BREAD:36,T8_FARM_COW_GROWN:4});assert.equal(r.fees,20*194.4+72*13.5);
 const settings={...cfg.foodIngredientSettings,T4_BREAD:{rrr:50,station:600},T3_FLOUR:{rrr:50,station:300},T8_MEAT:{rrr:25,station:300}};
 r=calc('T8_MEAL_STEW',{T4_BREAD:true,T3_FLOUR:true,T8_MEAT:true},{foodIngredientSettings:settings,buffer:10});assert.deepEqual(amounts(r),{T8_PUMPKIN:36,T3_WHEAT:9,T8_FARM_COW_GROWN:4});assert.equal(r.bill.find(m=>m.id==='T3_WHEAT').buy,10);assert.equal(r.bill.find(m=>m.id==='T8_FARM_COW_GROWN').buy,5);assert.equal(r.focus,baseFocus);assert.equal(r.fees,20*194.4+36*27+18*13.5+72*13.5);assert.equal(r.profit,r.gross-r.tax-r.cost);

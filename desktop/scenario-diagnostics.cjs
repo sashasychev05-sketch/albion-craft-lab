@@ -22,7 +22,7 @@ async function run(window,folder){
   return {firstAmount:first.result.amount,doubled,rows:rows.map(x=>({valid:x.valid,amount:x.result.amount,unitCost:x.result.unitCost,unitProfit:x.result.unitProfit,perOp:x.result.perOp})),unchanged,equivalent:{cost:equivalent.result.cost,liveCost:CraftApp.snapshot().result.cost},missingValid:missing.valid,skilled,hasComparison:document.querySelector('.scenario-comparison-table')!==null};
  })()`);
  assert.equal(summary.firstAmount,10);assert.equal(summary.doubled,20);assert.equal(summary.rows.length,2);assert.ok(summary.rows.every(x=>x.valid));assert.equal(summary.unchanged,true);
- assert.equal(summary.equivalent.cost,summary.equivalent.liveCost);assert.equal(summary.missingValid,false);assert.deepEqual(summary.skilled,[232,232]);assert.equal(summary.hasComparison,true);assert.ok(summary.rows[1].unitCost<summary.rows[0].unitCost);
+ assert.equal(summary.equivalent.cost,summary.equivalent.liveCost);assert.equal(summary.missingValid,false);assert.deepEqual(summary.skilled,[2315,2315]);assert.equal(summary.hasComparison,true);assert.ok(summary.rows[1].unitCost<summary.rows[0].unitCost);
  const saveFile=path.resolve(folder,'comparison.csv');
  const download=new Promise((resolve,reject)=>window.webContents.session.once('will-download',(_event,item)=>{item.setSavePath(saveFile);item.once('done',(_e,state)=>state==='completed'?resolve():reject(Error('CSV download: '+state)));}));
  await execute("document.getElementById('scenario-csv').click()");await download;

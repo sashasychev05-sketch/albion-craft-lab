@@ -15,7 +15,7 @@ async function run(window,folder){
   const comparison=ScenarioUI.comparison().map(r=>r.result.perOp);
   return {primary,alt,trained:{perOp:trained.perOp,amount:trained.amount},untrained:{perOp:untrained.perOp,amount:untrained.amount},blankLevels,independent,comparison};
  })()`);
- assert.deepEqual(result.trained,{perOp:232,amount:1290});assert.deepEqual(result.untrained,{perOp:752,amount:390});assert.equal(result.blankLevels,true);assert.equal(result.independent,true);assert.deepEqual(result.comparison,[232,232]);
+ assert.deepEqual(result.trained,{perOp:2315,amount:120});assert.deepEqual(result.untrained,{perOp:7520,amount:30});assert.equal(result.blankLevels,true);assert.equal(result.independent,true);assert.deepEqual(result.comparison,[2315,2315]);
  const loaded=once(window.webContents,'did-finish-load');window.webContents.reload();await loaded;
  const reopened=await execute('({active:CharacterProfiles.snapshot().active,count:CharacterProfiles.snapshot().profiles.length,stew:MasteryUI.levels().FARM_COOK_STEW})');
  assert.equal(reopened.active,result.primary);assert.equal(reopened.count,2);assert.equal(reopened.stew,50);

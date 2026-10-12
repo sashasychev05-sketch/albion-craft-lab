@@ -1,0 +1,15 @@
+(function(root){'use strict';
+const KEY='albion-price-book-v1',clone=x=>JSON.parse(JSON.stringify(x)),servers=['europe','west','east'],actions=['buy','sell','bid'];
+function key(server,id,city,q,action){if(!servers.includes(server)||!/^[A-Z0-9_@]+$/.test(id)||!['Bridgewatch','Fort Sterling','Lymhurst','Martlock','Thetford','Caerleon','Brecilien','Black Market'].includes(city)||![1,2,3,4,5].includes(Number(q))||!actions.includes(action))throw Error('Некорректный адрес цены.');return [server,id,city,Number(q),action].join('|');}
+function create(storage,now=()=>Date.now()){
+ let data={version:1,entries:{}};const raw=storage.getItem(KEY);if(raw){data=JSON.parse(raw);if(data?.version!==1||!data.entries||typeof data.entries!=='object'||Array.isArray(data.entries))throw Error('Не удалось прочитать «Мои цены». Исходные записи сохранены.');for(const [k,x]of Object.entries(data.entries)){const parts=k.split('|');if(parts.length!==5||key(...parts)!==k||!x||!Number.isFinite(x.price)||x.price<=0||x.price>1e12||!Number.isFinite(Date.parse(x.timestamp))||!['manual','market'].includes(x.source))throw Error('В «Моих ценах» повреждена запись. Исходные записи сохранены.');}}
+ function persist(next){storage.setItem(KEY,JSON.stringify(next));data=next;}
+ function set(server,id,city,q,action,price){const k=key(server,id,city,q,action),next=clone(data);if(price===null)delete next.entries[k];else{price=Number(price);if(!Number.isFinite(price)||price<=0||price>1e12)throw Error('Введите цену больше нуля.');next.entries[k]={price,timestamp:new Date(now()).toISOString(),source:'manual'};}persist(next);return clone(next.entries[k]||null);}
+ function resolve(server,id,city,q,action,quote={},timestamp){const k=key(server,id,city,q,action);let x=data.entries[k];if(!x)return quote;const time=Date.parse(timestamp),last=Date.parse(x.timestamp);if(quote.price>0&&Number.isFinite(time)&&time>last&&time<=now()+60000){const next=clone(data);next.entries[k]={price:quote.price,timestamp:new Date(time).toISOString(),source:'market',manualTimestamp:x.manualTimestamp||x.timestamp};try{persist(next);x=next.entries[k];}catch{return {...quote,bookSaveError:true};}}
+ if(x.source==='market'){if(quote.price>0&&Date.parse(timestamp)>=Date.parse(x.timestamp))return {...quote,fromBook:true,bookTimestamp:x.timestamp};return {price:0,age:(now()-Date.parse(x.timestamp))/3600000,reason:'Сохранённая рыночная цена требует свежего подтверждения',fromBook:true};}
+ return {...quote,price:x.price,age:null,manual:true,fromBook:true,timestamp:x.timestamp,reason:'',sourceLabel:'Мои цены · '+new Date(x.timestamp).toLocaleString('ru-RU')};}
+ return {set,resolve,snapshot:()=>clone(data),get(server,id,city,q,action){return clone(data.entries[key(server,id,city,q,action)]||null);}};
+}
+const api={KEY,key,create};root.PriceBookMath=api;if(typeof module!=='undefined')module.exports=api;
+if(root.localStorage)try{root.PriceBook=create(root.localStorage)}catch(error){root.PriceBookError=error.message;}
+})(typeof window!=='undefined'?window:globalThis);

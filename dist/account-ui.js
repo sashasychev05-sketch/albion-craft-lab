@@ -1,0 +1,10 @@
+(function(){'use strict';
+const $=id=>document.getElementById(id),header=document.querySelector('.header-actions'),characters=document.querySelector('[data-mode="character"]'),picker=$('active-character').closest('label');
+const accounts=document.createElement('div');accounts.className='account-controls';
+characters.classList.add('account-avatar');characters.innerHTML='<span aria-hidden="true">◎</span><span class="account-caption">Мои персонажи</span>';characters.title='Мои персонажи';characters.setAttribute('aria-label','Мои персонажи');
+picker.classList.add('account-picker');accounts.append(picker,characters);
+const cabinet=document.createElement('details');cabinet.className='account-menu';cabinet.innerHTML='<summary>Мой кабинет ▾</summary><div class="account-menu-items"><button id="account-compare" class="button">Сравнение крафтов</button><button id="account-prices" data-mode="prices" class="button nav">Мои цены</button><button id="account-islands" class="button">Мои острова</button></div>';
+const crafts=$('scenario-library');crafts.textContent='Мои крафты';cabinet.querySelector('.account-menu-items').prepend(crafts);accounts.append(cabinet);header.append(accounts);
+$('account-compare').onclick=()=>{cabinet.open=false;window.ScenarioUI.open();$('scenario-compare-tab').click();};$('account-prices').onclick=()=>{cabinet.open=false;window.CraftApp.navigate('prices');document.dispatchEvent(new Event('change'));};$('account-islands').onclick=()=>{cabinet.open=false;document.querySelector('[data-mode="island"]').click();};crafts.addEventListener('click',()=>cabinet.open=false);
+document.addEventListener('pricebookchange',()=>{const v=Object.values(window.ActivityViews).find(v=>v.active());if(v&&v!==window.PriceBookUI)v.render();});
+})();
