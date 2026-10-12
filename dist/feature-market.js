@@ -12,6 +12,6 @@ async function load(server,ids,force=false){ids=[...new Set(ids)].sort();const c
   if(results[0].status==='fulfilled')for(const p of results[0].value){const k=key(server,p.item_id,p.city,p.quality);book.quotes[k]=M.merge(row(server,p.item_id,p.city,p.quality),p)}else errors.push('Цены недоступны');
   if(results[1].status==='fulfilled')for(const h of results[1].value){const d=h.data.filter(x=>x.timestamp.slice(0,10)>=first&&x.timestamp.slice(0,10)<=last),count=d.reduce((s,x)=>s+x.item_count,0);book.histories[key(server,h.item_id,h.location,h.quality)]={daily:count/14,avg:count?d.reduce((s,x)=>s+x.item_count*x.avg_price,0)/count:0,days:d.length,from:first,to:last}}else errors.push('История продаж недоступна');
  }if(!errors.length)cache.set(ck,Date.now());return [...new Set(errors)].join('. ')}
-return {quote,cheapest,history,load,cancel};}
+return {row,quote,cheapest,history,load,cancel};}
 window.FeatureMarket={create};
 })();

@@ -38,6 +38,8 @@ async function run(window, updates, folder) {
     }
   }
   window.setSize(1440, 960);
+  result.scenarios = await require('./scenario-diagnostics.cjs').run(window, folder);
+  result.profiles = await require('./profile-diagnostics.cjs').run(window, folder);
   result.csp = await window.webContents.executeJavaScript("fetch(location.href).then(r => r.headers.get('content-security-policy'))");
   assert.ok(result.csp.includes("script-src 'self'"));
   await window.webContents.executeJavaScript("localStorage.setItem('desktop-diagnostics', 'persisted'); document.querySelector('button.nav[data-mode=character]').click();");
@@ -53,8 +55,10 @@ async function run(window, updates, folder) {
   }
   if (process.argv.includes('--download-release')) {
     const { autoUpdater } = require('electron-updater');
-    autoUpdater.currentVersion = new (require('semver').SemVer)('0.0.0');
-    assert.equal((await updates.action()).phase, 'available');
+    if (updates.snapshot().phase !== 'available') {
+      autoUpdater.currentVersion = new (require('semver').SemVer)('0.0.0');
+      assert.equal((await updates.action()).phase, 'available');
+    }
     result.releaseDownload = await updates.action();
     assert.equal(result.releaseDownload.phase, 'ready');
     assert.equal(autoUpdater.autoInstallOnAppQuit, false);
