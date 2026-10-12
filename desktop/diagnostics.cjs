@@ -20,7 +20,7 @@ async function run(window, updates, folder) {
   assert.equal(result.masteryNodes, 344);
   assert.equal(result.nodeExposed, false);
   assert.equal(result.desktopBridge, true);
-  assert.equal(result.modes.length, 10);
+  assert.equal(result.modes.length, 11);
   result.layout = [];
   for (const width of [1440, 800]) {
     window.setSize(width, 960);
@@ -40,6 +40,7 @@ async function run(window, updates, folder) {
   window.setSize(1440, 960);
   result.scenarios = await require('./scenario-diagnostics.cjs').run(window, folder);
   result.profiles = await require('./profile-diagnostics.cjs').run(window, folder);
+  result.islands = await require('./island-diagnostics.cjs').run(window, folder);
   result.csp = await window.webContents.executeJavaScript("fetch(location.href).then(r => r.headers.get('content-security-policy'))");
   assert.ok(result.csp.includes("script-src 'self'"));
   await window.webContents.executeJavaScript("localStorage.setItem('desktop-diagnostics', 'persisted'); document.querySelector('button.nav[data-mode=character]').click();");

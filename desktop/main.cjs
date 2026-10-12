@@ -21,7 +21,7 @@ const csp = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inl
 function external(url) {
   try {
     const link = new URL(url);
-    if (link.protocol === 'https:' && ['github.com', 'www.albion-online-data.com'].includes(link.hostname)) shell.openExternal(link.href).catch(() => {});
+    if (link.protocol === 'https:' && ['github.com', 'www.albion-online-data.com', 'albiononline.com'].includes(link.hostname)) shell.openExternal(link.href).catch(() => {});
   } catch {}
 }
 function senderAllowed(event) {
