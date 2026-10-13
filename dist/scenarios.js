@@ -53,5 +53,5 @@ function best(rows,metric){
  return usable.reduce((a,b)=>metric==='unitCost'?(b.result[metric]<a.result[metric]?b:a):(b.result[metric]>a.result[metric]?b:a)).id;
 }
 function csv(rows){return '\ufeff'+rows.map(row=>row.map(value=>{if(typeof value==='string'&&/^[\s]*[=+@-]/.test(value))value="'"+value;return '"'+String(value??'').replace(/"/g,'""')+'"'}).join(';')).join('\r\n')}
-const api={KEY,clone,validate,read,add,quick,remove,select,volume,best,csv};root.ScenarioMath=api;if(typeof module!=='undefined')module.exports=api;
+const api={KEY,clone,validate,read,write,add,quick,remove,select,volume,best,csv};root.ScenarioMath=api;if(typeof module!=='undefined')module.exports=api;
 })(typeof window!=='undefined'?window:globalThis);

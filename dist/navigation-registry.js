@@ -1,0 +1,19 @@
+(function(root){'use strict';
+function create(D,meta){const nodes=[],byId=new Map();function add(id,label,parent=null,mode=null,filter=null,anchor=null){const n={id,label,parent,mode,filter,anchor,children:[]};nodes.push(n);byId.set(id,n);if(parent)byId.get(parent).children.push(id);return n;}
+add('production','Производство');add('food','Еда','production','food');add('potions','Зелья','production','potions');add('gear','Снаряжение','production','gear');add('weapons','Оружие','gear');add('armor','Броня','gear');
+for(const [id,label]of [['plate','Латная броня'],['leather','Кожаная броня'],['cloth','Тканевая броня']])add('armor-'+id,label,'armor');
+add('gear-bag','Сумки и кошели','gear','gear','bag');add('other-gear','Другие вещи','gear');
+const used=new Set();for(const c of meta.categories){if(!D.recipes.some(r=>r.kind==='gear'&&r.category===c.id))continue;const parent=c.group==='Оружие'?'weapons':c.group==='Броня'&&byId.has('armor-'+c.id.split('_')[0])?'armor-'+c.id.split('_')[0]:['cape','tools'].includes(c.id)?'gear':'other-gear';add('gear-'+c.id,c.name,parent,'gear',c.id);used.add(c.id);}
+for(const c of new Set(D.recipes.filter(r=>r.kind==='gear').map(r=>r.category)))if(!used.has(c))add('gear-'+c,meta.categoryNames?.[c]||c,'other-gear','gear',c);
+add('mounts','Маунты','production','mounts');add('resources','Ресурсы');add('refine','Переработка','resources','refine');add('transmutation','Трансмутация','resources','transmutation');add('items','Работа с вещами');for(const [id,label]of [['enchant','Зачарование'],['quality','Улучшение качества'],['salvage','Разбор']])add(id,label,'items',id);
+add('island-group','Остров');add('island','Доходность острова','island-group','island');for(const [id,label,anchor]of [['crops','Грядки','island-add-crop'],['workers','Рабочие','island-add-worker'],['animals','Животные','island-add-animal']])add('island-'+id,label,'island','island',null,anchor);
+add('trade','Торговля');for(const [id,label]of [['luxury','Перевозка роскоши'],['shipping','План перевозок'],['deals','Расчёт сделок']])add(id,label,'trade',id);
+add('account','Мой кабинет');for(const [id,label]of [['character','Мастерства и персонажи'],['training','Прокачка'],['prices','Мои цены'],['history','История']])add(id,label,'account',id);
+function path(id){const result=[];for(let n=byId.get(id);n;n=byId.get(n.parent))result.unshift(n);return result;}
+const section=id=>{const n=byId.get(id);return n?.mode?{type:'section',id:n.id,mode:n.mode,...(n.filter?{filter:n.filter}:{}),...(n.anchor?{anchor:n.anchor}:{})}:null;};
+function recipeTarget(id){const r=D.recipes.find(x=>x.id===id);if(!r)return null;return {type:'item',id,mode:r.kind==='bags'?'gear':r.kind};}
+function nodeFor(t){if(t.type==='section')return byId.get(t.id);if(t.type==='item'){const r=D.recipes.find(x=>x.id===t.id);return byId.get(r?.kind==='bags'?'gear-bag':r?.kind==='gear'?'gear-'+r.category:t.mode);}return null;}
+function resolve(t,library=[]){if(t.type==='saved'){const record=library.find(x=>x.id===t.id);if(!record)return {available:false,reason:'Сохранённый крафт удалён.'};const item=resolve(recipeTarget(record.recipeId)||{type:'item',id:record.recipeId},library);return {...item,record,label:record.name};}if(t.type==='item'){const r=D.recipes.find(x=>x.id===t.id);return r?{available:true,recipe:r,node:nodeFor(t),mode:r.kind==='bags'?'gear':r.kind,label:r.name+' · T'+r.tier+'.'+r.ench}:{available:false,reason:'Предмет отсутствует в текущем каталоге.'};}const n=byId.get(t.id);return n?.mode?{available:true,node:n,mode:n.mode,label:n.label}:{available:false,reason:'Раздел отсутствует после обновления.'};}
+return {nodes,byId,path,section,recipeTarget,nodeFor,resolve};}
+root.NavigationRegistry={create};if(typeof module!=='undefined')module.exports=root.NavigationRegistry;
+})(typeof window!=='undefined'?window:globalThis);

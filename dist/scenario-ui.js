@@ -35,7 +35,7 @@
  function tab(name){const compare=name==='compare';$('scenario-saved-panel').hidden=compare;$('scenario-compare-panel').hidden=!compare;$('scenario-saved-tab').setAttribute('aria-selected',String(!compare));$('scenario-compare-tab').setAttribute('aria-selected',String(compare));paint();}
  function open(name='saved'){status(loadError);tab(name);if(!dialog.open)dialog.showModal()}
  function save(name){if(loadError)throw Error(loadError);data=S.add(localStorage,data,name,A.saveVariant());paint();status('Вариант сохранён. Вы можете изменить параметры текущей партии.');return data.items.at(-1).id}
- function restore(id){const item=[...data.items,...(data.temporary||[])].find(x=>x.id===id);if(!item)throw Error('Вариант не найден.');A.restoreVariant(item);dialog.close();paintVolume();}
+ function restore(id){const item=[...data.items,...(data.temporary||[])].find(x=>x.id===id);if(!item)throw Error('Вариант не найден.');if(window.Workspace)window.Workspace.open({type:'saved',id});else A.restoreVariant(item);dialog.close();paintVolume();}
  function changeVolume(action){const x=A.snapshot(),patch=S.volume(x.recipe,x.config,action);for(const [key,value]of Object.entries(patch)){const field=$(key==='volumeMode'?'volume-mode':key==='focusBudget'?'focus-budget':'quantity');field.value=value;field.dispatchEvent(new Event(field.tagName==='SELECT'?'change':'input',{bubbles:true}));}paintVolume();}
  launch.onclick=()=>open();$('scenario-close').onclick=()=>dialog.close();dialog.addEventListener('close',()=>{request++;market.cancel();busy=false;});
  $('scenario-saved-tab').onclick=()=>tab('saved');$('scenario-compare-tab').onclick=()=>tab('compare');$('scenario-metric').onchange=paintCompare;
@@ -57,5 +57,5 @@
   const blob=new Blob([S.csv(list)],{type:'text/csv;charset=utf-8'}),link=document.createElement('a');link.href=URL.createObjectURL(blob);link.download='Albion-comparison.csv';link.click();setTimeout(()=>URL.revokeObjectURL(link.href),1000);
  };
  document.addEventListener('input',paintVolume);document.addEventListener('change',paintVolume);document.addEventListener('masterychange',()=>{paintVolume();if(dialog.open)paintCompare()});paintVolume();
- window.ScenarioUI={open,save,quick,restore,changeVolume,records:()=>S.clone(data),comparison:rows};
+ window.ScenarioUI={open,save,quick,restore,changeVolume,update(id,record){const item=data.items.find(x=>x.id===id);if(!item)throw Error('Сохранённый крафт удалён.');if(loadError)throw Error(loadError);const next={...data,items:data.items.map(x=>x.id===id?{...x,...S.validate(record)}:x)};data=S.write(localStorage,next);paint();document.dispatchEvent(new Event('librarychange'));},rename(id,name){name=String(name).trim();if(!name||name.length>80)throw Error('Введите имя до 80 символов.');if(loadError)throw Error(loadError);if(!data.items.some(x=>x.id===id))throw Error('Сохранённый крафт удалён.');const next={...data,items:data.items.map(x=>x.id===id?{...x,name}:x)};data=S.write(localStorage,next);paint();document.dispatchEvent(new Event('librarychange'));},records:()=>S.clone(data),comparison:rows};
 })();

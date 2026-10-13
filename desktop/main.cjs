@@ -41,7 +41,7 @@ function createWindow() {
   window.on('closed', () => { window = null; });
   window.once('ready-to-show', () => { if (!diagnosticFolder) window.show(); });
   window.loadURL(`${ORIGIN}/index.html`);
-  if (diagnosticFolder) require('./diagnostics.cjs').run(window, updates, diagnosticFolder).then(() => app.exit(0)).catch(error => { console.error(error); app.exit(1); });
+  if (diagnosticFolder) require('./diagnostics.cjs').run(window, updates, diagnosticFolder).then(() => app.exit(0)).catch(async error => { console.error(error);try{fs.writeFileSync(path.resolve(diagnosticFolder,'failure.png'),(await window.webContents.capturePage()).toPNG());fs.writeFileSync(path.resolve(diagnosticFolder,'failure-state.json'),JSON.stringify(await window.webContents.executeJavaScript("({workspace:window.Workspace?.snapshot(),notice:document.getElementById('workspace-status')?.textContent,mode:document.querySelector('button.nav.active')?.dataset.mode})"),null,2));}catch{}app.exit(1); });
 }
 if (!app.requestSingleInstanceLock()) app.quit();
 else {
@@ -71,6 +71,6 @@ else {
       { label: 'Вид', submenu: [{ label: 'Увеличить', role: 'zoomIn' }, { label: 'Уменьшить', role: 'zoomOut' }, { label: 'Исходный масштаб', role: 'resetZoom' }, { label: 'На весь экран', role: 'togglefullscreen' }] }
     ]));
     createWindow();
-  }).catch(error => { dialog.showErrorBox('Albion Craft Lab', 'Не удалось запустить приложение: ' + error.message); app.exit(1); });
+  }).catch(error => { console.error(error); if (!diagnosticFolder) dialog.showErrorBox('Albion Craft Lab', 'Не удалось запустить приложение: ' + error.message); app.exit(1); });
   app.on('window-all-closed', () => app.quit());
 }

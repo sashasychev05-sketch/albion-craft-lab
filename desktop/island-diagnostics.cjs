@@ -49,7 +49,7 @@ async function run(window,folder){
  const animalsReload=once(window.webContents,'did-finish-load');window.webContents.reload();await animalsReload;assert.equal(await execute("document.querySelector('button.nav[data-mode=island]').click();IslandUI.snapshot().plan.animals[0].mode"),'produce');
  // Verify the live automatic price guard, including a low-volume history and stale orders.
  // Test guard through a new UI instance whose stored plan has no manual overrides.
- await execute(`(() => {const s=IslandMath.createStore(localStorage,IslandData),p=s.snapshot('europe');p.plans.find(x=>x.uid===p.active).plan.prices={};s.save('europe',p.plans.find(x=>x.uid===p.active).plan);return true;})()`);
+ await execute(`(() => {const s=IslandMath.createStore(localStorage,IslandData),p=s.snapshot('europe');p.plans.find(x=>x.uid===p.active).plan.prices={};s.save('europe',p.plans.find(x=>x.uid===p.active).plan);const draft=ActivityViews.island.captureDraft();draft.plan.prices={};ActivityViews.island.restoreDraft(draft);Workspace.capture();return true;})()`);
  const guardReload=once(window.webContents,'did-finish-load');window.webContents.reload();await guardReload;
  const liveGuards=await execute(`(() => {
   document.querySelector('button.nav[data-mode=island]').click();const v=ActivityViews.island,q=v.market.quote,h=v.market.history;v.market.quote=()=>({price:500,age:1});v.market.history=()=>({days:3,daily:.5,to:new Date(Date.now()-86400000).toISOString().slice(0,10)});v.render();const low=!IslandUI.snapshot().result.ready;
