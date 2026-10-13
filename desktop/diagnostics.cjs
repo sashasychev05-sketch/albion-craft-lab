@@ -81,6 +81,7 @@ async function run(window, updates, folder) {
   result.themes = await require('./theme-diagnostics.cjs').run(window, folder);
   console.log("Checking workspace");
   result.workspace = await require("./workspace-diagnostics.cjs").run(window, folder);
+  result.catalogSearch = await require('./catalog-search-diagnostics.cjs').run(window, folder);
   result.csp = await window.webContents.executeJavaScript("fetch(location.href).then(r => r.headers.get('content-security-policy'))");
   assert.ok(result.csp.includes("script-src 'self'"));
   await window.webContents.executeJavaScript("localStorage.setItem('desktop-diagnostics', 'persisted'); document.querySelector('button.nav[data-mode=character]').click();");
