@@ -17,7 +17,7 @@ app.setAppUserModelId('com.albioncraftlab.desktop');
 protocol.registerSchemesAsPrivileged([{ scheme: 'albion', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true } }]);
 let window;
 let updates;
-const csp = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://render.albiononline.com; connect-src 'self' https://europe.albion-online-data.com https://west.albion-online-data.com https://east.albion-online-data.com; object-src 'none'; base-uri 'none'; frame-src 'none'";
+const csp = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://render.albiononline.com; connect-src 'self' https://europe.albion-online-data.com https://west.albion-online-data.com https://east.albion-online-data.com https://api.albionfreemarket.com; object-src 'none'; base-uri 'none'; frame-src 'none'";
 function external(url) {
   try {
     const link = new URL(url);

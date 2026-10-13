@@ -47,6 +47,7 @@ async function run(window, updates, folder) {
   result.characterPicker = await require('./character-picker-diagnostics.cjs').run(window, folder);
   result.searchSale = await require('./search-sale-diagnostics.cjs').run(window, folder);
   result.blockFolds = await require('./block-folds-diagnostics.cjs').run(window, folder);
+  result.transmutationFees = await require('./transmutation-fees-diagnostics.cjs').run(window, folder);
   result.csp = await window.webContents.executeJavaScript("fetch(location.href).then(r => r.headers.get('content-security-policy'))");
   assert.ok(result.csp.includes("script-src 'self'"));
   await window.webContents.executeJavaScript("localStorage.setItem('desktop-diagnostics', 'persisted'); document.querySelector('button.nav[data-mode=character]').click();");
