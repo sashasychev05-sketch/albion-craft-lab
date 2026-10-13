@@ -20,7 +20,8 @@ function validate(record){
 function read(storage){
  const text=storage.getItem(KEY);if(!text)return {version:1,items:[],selected:[]};
  const data=JSON.parse(text);if(data.version!==1||!Array.isArray(data.items)||data.items.length>100||!Array.isArray(data.selected))throw Error('Не удалось прочитать сохранённые расчёты.');
- const ids=new Set();for(const item of data.items){validate(item);if(typeof item.id!=='string'||ids.has(item.id)||typeof item.name!=='string'||item.name.length>80)throw Error('Сохранённые расчёты повреждены.');ids.add(item.id)}
+ if(data.temporary!==undefined&&(!Array.isArray(data.temporary)||data.temporary.length>4))throw Error('Повреждены временные варианты сравнения.');
+ const ids=new Set();for(const item of [...data.items,...(data.temporary||[])]){validate(item);if(typeof item.id!=='string'||ids.has(item.id)||typeof item.name!=='string'||item.name.length>80)throw Error('Сохранённые расчёты повреждены.');ids.add(item.id)}
  return {...data,selected:[...new Set(data.selected)].filter(id=>ids.has(id)).slice(0,4)};
 }
 function write(storage,data){storage.setItem(KEY,JSON.stringify(data));return data}
@@ -28,15 +29,16 @@ function add(storage,data,name,record){
  name=String(name).trim();if(!name||name.length>80)throw Error('Введите название до 80 символов.');
  if(data.items.length>=100)throw Error('Сохранено 100 вариантов. Удалите ненужный перед добавлением нового.');
  const item={...validate(record),id:root.crypto?.randomUUID?.()||Date.now().toString(36)+Math.random().toString(36).slice(2),name,createdAt:new Date().toISOString()};
- const selected=data.selected.filter(id=>data.items.some(x=>x.id===id&&x.server===item.server));
+ const selected=data.selected.filter(id=>[...data.items,...(data.temporary||[])].some(x=>x.id===id&&x.server===item.server));
  if(selected.length<4)selected.push(item.id);
- return write(storage,{version:1,items:[...data.items,item],selected});
+ return write(storage,{...data,version:1,items:[...data.items,item],selected});
 }
-function remove(storage,data,id){return write(storage,{...data,items:data.items.filter(x=>x.id!==id),selected:data.selected.filter(x=>x!==id)})}
+function remove(storage,data,id){const next={...data,items:data.items.filter(x=>x.id!==id),selected:data.selected.filter(x=>x!==id)};if(data.temporary)next.temporary=data.temporary.filter(x=>x.id!==id);return write(storage,next)}
 function select(storage,data,ids){
  ids=[...new Set(ids)];if(ids.length>4)throw Error('Можно сравнить не больше четырёх вариантов.');
- return write(storage,{...data,selected:ids.filter(id=>data.items.some(x=>x.id===id))});
+ return write(storage,{...data,selected:ids.filter(id=>[...data.items,...(data.temporary||[])].some(x=>x.id===id))});
 }
+function quick(storage,data,name,record,destination){if(!['save','compare','both'].includes(destination))throw Error('Выберите, куда добавить расчёт.');name=String(name).trim();if(!name||name.length>80)throw Error('Введите название до 80 символов.');record=validate(record);const all=[...data.items,...(data.temporary||[])],selected=data.selected.filter(id=>all.some(x=>x.id===id&&x.server===record.server));if(destination!=='save'&&selected.length>=4)throw Error('В сравнении уже четыре варианта. Уберите один перед добавлением.');if(destination!=='compare'&&data.items.length>=100)throw Error('Сохранено 100 вариантов. Удалите ненужный.');const item={...record,id:root.crypto?.randomUUID?.()||Date.now().toString(36)+Math.random().toString(36).slice(2),name,createdAt:new Date().toISOString()},next={...data,items:[...data.items],selected:destination==='save'?[...data.selected]:[...selected,item.id]};if(destination==='compare'){next.temporary=(data.temporary||[]).filter(x=>selected.includes(x.id));next.temporary.push(item);}else next.items.push(item);return write(storage,next);}
 function volume(recipe,config,action){
  const focus=['food','potions','gear'].includes(recipe.kind)&&config.focus&&config.volumeMode==='focus';
  if(action==='one')return {volumeMode:'quantity',quantity:recipe.output};
@@ -51,5 +53,5 @@ function best(rows,metric){
  return usable.reduce((a,b)=>metric==='unitCost'?(b.result[metric]<a.result[metric]?b:a):(b.result[metric]>a.result[metric]?b:a)).id;
 }
 function csv(rows){return '\ufeff'+rows.map(row=>row.map(value=>{if(typeof value==='string'&&/^[\s]*[=+@-]/.test(value))value="'"+value;return '"'+String(value??'').replace(/"/g,'""')+'"'}).join(';')).join('\r\n')}
-const api={KEY,clone,validate,read,add,remove,select,volume,best,csv};root.ScenarioMath=api;if(typeof module!=='undefined')module.exports=api;
+const api={KEY,clone,validate,read,add,quick,remove,select,volume,best,csv};root.ScenarioMath=api;if(typeof module!=='undefined')module.exports=api;
 })(typeof window!=='undefined'?window:globalThis);

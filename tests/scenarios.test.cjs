@@ -2,6 +2,21 @@
 const {test}=require('node:test'),assert=require('node:assert/strict'),S=require('../dist/scenarios.js');
 const storage=()=>{const map=new Map();return {getItem:k=>map.get(k)||null,setItem:(k,v)=>map.set(k,v),map}};
 const record=()=>({recipeId:'T8_MEAL_STEW@1',server:'europe',config:{quantity:10,focusBudget:30000,volumeMode:'quantity',rrr:37.25,manualReturn:true,foodIngredientSteps:{T4_BREAD:true}},overrides:{T8_PUMPKIN:{city:'Lymhurst',price:429}}});
+test('quick actions independently save, compare, or do both and persist comparison-only variants',()=>{
+ const store=storage(),source=record();let data=S.quick(store,S.read(store),'В библиотеку',source,'save');
+ assert.equal(data.items.length,1);assert.equal(data.selected.length,0);
+ data=S.quick(store,data,'В сравнение',source,'compare');assert.equal(data.items.length,1);assert.equal(data.temporary.length,1);assert.deepEqual(data.selected,[data.temporary[0].id]);
+ data=S.quick(store,data,'В оба места',source,'both');assert.equal(data.items.length,2);assert.equal(data.selected.length,2);assert.ok(data.selected.includes(data.items[1].id));
+ source.config.foodIngredientSteps.T4_BREAD=false;assert.equal(data.temporary[0].config.foodIngredientSteps.T4_BREAD,true);assert.deepEqual(S.read(store),data);
+ data=S.add(store,data,'Старое сохранение',record());assert.equal(data.temporary.length,1);assert.ok(data.selected.includes(data.temporary[0].id));
+ data=S.remove(store,data,data.temporary[0].id);assert.equal(data.temporary.length,0);assert.equal(data.selected.length,2);
+});
+test('quick action limits and failed storage never partially save a comparison',()=>{
+ const store=storage();let data=S.read(store);for(let i=0;i<4;i++)data=S.quick(store,data,'Вариант '+i,record(),'compare');
+ const before=store.getItem(S.KEY);assert.throws(()=>S.quick(store,data,'Пятый',record(),'both'),/четыре/);assert.equal(store.getItem(S.KEY),before);assert.equal(data.items.length,0);
+ data=S.quick(store,data,'Только сохранить',record(),'save');assert.equal(data.items.length,1);assert.equal(data.selected.length,4);
+ const saved=store.getItem(S.KEY);store.setItem=()=>{throw Error('QuotaExceeded')};assert.throws(()=>S.quick(store,data,'Ещё',record(),'save'),/QuotaExceeded/);assert.equal(store.getItem(S.KEY),saved);assert.equal(data.items.length,1);
+});
 test('saved variants preserve nested inputs without following later edits',()=>{
  const store=storage(),source=record();let data=S.add(store,S.read(store),'Жаркое на день',source);source.config.rrr=10;source.config.foodIngredientSteps.T4_BREAD=false;source.overrides.T8_PUMPKIN.price=1;
  assert.equal(data.items[0].config.rrr,37.25);assert.equal(data.items[0].config.foodIngredientSteps.T4_BREAD,true);assert.equal(data.items[0].overrides.T8_PUMPKIN.price,429);

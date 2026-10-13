@@ -15,13 +15,15 @@ async function run(window, updates, folder) {
     return { title: document.title, button: document.getElementById('app-update')?.textContent,
       modes: [...document.querySelectorAll('button.nav[data-mode]')].map(b => b.dataset.mode),
       masteryNodes: Object.keys(MASTERY_DATA.nodes).length, snapshot: Boolean(snapshot),
-      nodeExposed: typeof require !== 'undefined', desktopBridge: Boolean(window.DesktopApp) };
+      nodeExposed: typeof require !== 'undefined', desktopBridge: Boolean(window.DesktopApp), actionsInitiallyCollapsed: !document.getElementById('craft-actions').open, noDefaultProfitGoal: CraftApp.snapshot().config.goalTarget === null };
   })()`);
   assert.equal(result.button, 'Проверить обновления');
   assert.equal(result.masteryNodes, 344);
   assert.equal(result.nodeExposed, false);
   assert.equal(result.desktopBridge, true);
-  assert.equal(result.modes.length, 16, JSON.stringify(errors));
+  assert.equal(result.actionsInitiallyCollapsed, true);
+  assert.equal(result.noDefaultProfitGoal, true);
+  assert.equal(result.modes.length, 17, JSON.stringify(errors));
   result.layout = [];
   for (const width of [1440, 800]) {
     window.setSize(width, 960);
@@ -48,6 +50,8 @@ async function run(window, updates, folder) {
   result.searchSale = await require('./search-sale-diagnostics.cjs').run(window, folder);
   result.blockFolds = await require('./block-folds-diagnostics.cjs').run(window, folder);
   result.transmutationFees = await require('./transmutation-fees-diagnostics.cjs').run(window, folder);
+  result.qualityFeatures = await require('./quality-features-diagnostics.cjs').run(window, folder);
+  result.themes = await require('./theme-diagnostics.cjs').run(window, folder);
   result.csp = await window.webContents.executeJavaScript("fetch(location.href).then(r => r.headers.get('content-security-policy'))");
   assert.ok(result.csp.includes("script-src 'self'"));
   await window.webContents.executeJavaScript("localStorage.setItem('desktop-diagnostics', 'persisted'); document.querySelector('button.nav[data-mode=character]').click();");

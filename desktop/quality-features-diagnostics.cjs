@@ -1,0 +1,50 @@
+'use strict';
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),{once}=require('node:events');
+async function run(window,folder){const execute=code=>window.webContents.executeJavaScript(code),close=(a,b)=>assert.ok(Math.abs(a-b)<1e-6,`${a} != ${b}`);
+ const crafting=await execute(`(()=>{
+  document.querySelector('.interface-menu').open=false;CraftApp.open('T8_ARMOR_CLOTH_AVALON',{quantity:2,craftPlace:'city',focus:false,volumeMode:'quantity',buffer:25,manualReturn:true,rrr:0,characters:0,withJournals:false,manualSale:true,salePrice:50000,station:0,goalTarget:null,goalPeriod:90});
+  const small=CraftApp.snapshot().result.bill.map(r=>({id:r.id,net:r.net,buy:r.buy}));
+  const record=CraftApp.saveVariant();record.config.quantity=100;record.config.cycleDays=3;for(const m of CraftApp.snapshot().result.bill)record.overrides[m.id]={city:'Lymhurst',price:100};CraftApp.restoreVariant(record);
+  const all=Object.fromEntries(Object.keys(MASTERY_DATA.nodes).map(id=>[id,100]));MasteryUI.replace(all);const trained=QualityUI.forecast();
+  const set=(id,value)=>{const n=document.getElementById(id);n.value=value;n.dispatchEvent(new Event('input',{bubbles:true}));};
+  set('craft-quality-food',50);const buff=QualityUI.forecast();
+  const profiles=CharacterProfiles.snapshot(),original=profiles.active,alt=profiles.profiles.find(p=>p.id!==original).id;
+  const selector=document.getElementById('active-character');selector.value=alt;selector.dispatchEvent(new Event('change',{bubbles:true}));const alternate=QualityUI.forecast();selector.value=original;selector.dispatchEvent(new Event('change',{bubbles:true}));
+  set('goal-target',0);set('goal-period',0);const emptyPeriod=document.getElementById('projection').textContent==='Укажите срок'&&!document.getElementById('goal-text').textContent.includes('NaN');set('goal-period',30);const noGoal=document.getElementById('goal-progress').parentElement.hidden;
+  const projection=CraftApp.snapshot().result.profit*10;set('goal-target',projection*2);BlockFolds.expandAll();
+  return {small,trained:{bonus:trained.bonus,counts:trained.rows.map(r=>r.count),masterpiece:trained.rows[4].probability},buff:buff.rows[4].probability,alternate:alternate.rows[4].probability,noGoal,emptyPeriod,heading:document.getElementById('projection-heading').textContent,progress:document.getElementById('goal-progress').style.width,forecastRows:document.querySelectorAll('#craft-quality-rows tr').length,restoredBonus:QualityUI.forecast().bonus};
+ })()`);
+ assert.equal(crafting.small.find(r=>r.id.includes('ARTEFACT')).buy,2);assert.ok(crafting.small.find(r=>r.id==='T8_CLOTH').buy>crafting.small.find(r=>r.id==='T8_CLOTH').net);
+ assert.equal(crafting.emptyPeriod,true);
+ close(crafting.trained.bonus,1087.5);assert.equal(crafting.trained.counts.reduce((s,n)=>s+n,0),100);assert.equal(crafting.forecastRows,5);assert.ok(crafting.buff>crafting.trained.masterpiece);assert.ok(crafting.alternate<crafting.buff);close(crafting.restoredBonus,1137.5);assert.equal(crafting.noGoal,true);assert.ok(crafting.heading.startsWith('30'));assert.equal(crafting.progress,'50%');
+ await execute("document.getElementById('quality-forecast').scrollIntoView({block:'start',behavior:'instant'});new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))");await new Promise(r=>setTimeout(r,250));fs.writeFileSync(path.join(folder,'craft-quality.png'),(await window.webContents.capturePage()).toPNG());
+ const actions=await execute(`(()=>{
+  ScenarioUI.open('saved');for(const checkbox of document.querySelectorAll('#scenario-list [data-scenario-select]:checked')){checkbox.checked=false;checkbox.dispatchEvent(new Event('change',{bubbles:true}));}document.getElementById('scenario-close').click();
+  const initial=ScenarioUI.records().items.length,add=destination=>{document.getElementById('craft-action-destination').value=destination;document.getElementById('craft-action-name').value='Тест '+destination;document.getElementById('craft-action-add').click();return ScenarioUI.records();};
+  document.getElementById('craft-actions').open=true;const compare=add('compare'),save=add('save'),both=add('both');
+  const temp=compare.temporary.at(-1).id;ScenarioUI.restore(temp);const restored=CraftApp.snapshot().result.amount===100&&QualityUI.forecast().rows.reduce((s,r)=>s+r.count,0)===100;
+  add('both');const full=add('both'),before=JSON.stringify(full);add('both');const rejected=JSON.stringify(ScenarioUI.records())===before&&document.getElementById('craft-action-status').textContent.includes('четыре');
+  return {initial,compare:{saved:compare.items.length,selected:compare.selected.length,temporary:compare.temporary.length},save:{saved:save.items.length,selected:save.selected.length},both:{saved:both.items.length,selected:both.selected.length},restored,rejected,finalSaved:full.items.length};
+ })()`);
+ assert.deepEqual(actions.compare,{saved:actions.initial,selected:1,temporary:1});assert.deepEqual(actions.save,{saved:actions.initial+1,selected:1});assert.deepEqual(actions.both,{saved:actions.initial+2,selected:2});assert.equal(actions.restored,true);assert.equal(actions.rejected,true);
+ await execute("document.querySelector('.interface-menu').open=false;document.getElementById('craft-actions').scrollIntoView({block:'center',behavior:'instant'});new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))");await new Promise(r=>setTimeout(r,250));fs.writeFileSync(path.join(folder,'craft-actions.png'),(await window.webContents.capturePage()).toPNG());
+ const improvement=await execute(`(()=>{
+  CraftApp.navigate('quality');BlockFolds.expandAll();const v=QualityUI.view;v.market.load=async()=>'';
+  const set=(id,value,event='input')=>{const n=document.getElementById(id);if(n.type==='checkbox')n.checked=value;else n.value=value;n.dispatchEvent(new Event(event,{bubbles:true}));};
+  set('quality-item','T4_MAIN_SWORD','change');set('quality-from',1,'change');set('quality-to',4,'change');set('quality-quantity',100);set('quality-coefficient-manual',1.156);set('quality-own',true,'change');const normal=v.result();
+  set('quality-for-sale',true,'change');set('quality-sell',20000);set('quality-tax',4);set('quality-setup',2.5);const sale=document.getElementById('quality-profit').textContent,breakEven=document.getElementById('quality-breakeven').textContent;
+  set('quality-sell-city','Black Market','change');const blackMarket={mode:document.getElementById('quality-sale-mode').value,disabled:document.getElementById('quality-sale-mode').disabled};
+  set('quality-sell-city','Lymhurst','change');set('quality-from',4,'change');set('quality-to',5,'change');set('quality-quantity',1);const master=v.result();
+  set('quality-from',5,'change');const already=v.result();
+  set('quality-from',1,'change');set('quality-to',4,'change');set('quality-quantity',100);set('quality-sell',20000);set('quality-sale-mode','order','change');document.querySelector('.interface-menu').open=false;
+  return {normal:{cost:normal.totalCost,attempts:normal.attempts},sale,breakEven,blackMarket,master:{attempts:master.attempts,p95:master.limits.p95},already:{cost:already.totalCost,attempts:already.totalAttempts},width:document.documentElement.scrollWidth,viewport:innerWidth};
+ })()`);
+ close(improvement.normal.cost,964032.6582857142);close(improvement.normal.attempts,3.814285714285714);assert.ok(improvement.sale.includes('Ожидаемая прибыль'));assert.ok(improvement.breakEven.includes('Безубыточная'));assert.deepEqual(improvement.blackMarket,{mode:'instant',disabled:true});close(improvement.master.attempts,200);assert.equal(improvement.master.p95,598);assert.deepEqual(improvement.already,{cost:0,attempts:0});assert.ok(improvement.width<=improvement.viewport+1);
+ await execute("window.scrollTo({top:0,behavior:'instant'});new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))");await new Promise(r=>setTimeout(r,250));fs.writeFileSync(path.join(folder,'quality-reroll.png'),(await window.webContents.capturePage()).toPNG());
+ window.setSize(800,960);await new Promise(r=>setTimeout(r,200));const narrow=await execute('({width:document.documentElement.scrollWidth,viewport:innerWidth})');assert.ok(narrow.width<=narrow.viewport+1);fs.writeFileSync(path.join(folder,'quality-reroll-narrow.png'),(await window.webContents.capturePage()).toPNG());window.setSize(1440,960);
+ const loaded=once(window.webContents,'did-finish-load');window.webContents.reload();await loaded;
+ const persisted=await execute(`(()=>{CraftApp.open('T8_ARMOR_CLOTH_AVALON');const cfg=CraftApp.snapshot().config,forecast=QualityUI.forecast();CraftApp.navigate('quality');const reroll=QualityUI.view.result(),data=ScenarioUI.records();return {period:cfg.goalPeriod,target:cfg.goalTarget,food:cfg.qualityFoodBonus,forecast:forecast.bonus,reroll:reroll.totalCost,saved:data.items.length,temporary:data.temporary.length,selected:data.selected.length};})()`);
+ assert.equal(persisted.period,30);assert.ok(persisted.target>0);assert.equal(persisted.food,50);close(persisted.forecast,1137.5);close(persisted.reroll,964032.6582857142);assert.equal(persisted.saved,actions.finalSaved);assert.equal(persisted.temporary,1);assert.equal(persisted.selected,4);
+ return {crafting,actions,improvement,persisted};
+}
+module.exports={run};
