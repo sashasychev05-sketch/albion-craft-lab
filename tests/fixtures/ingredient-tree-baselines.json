@@ -1,0 +1,1168 @@
+{
+  "sourceVersion": "1.5.2",
+  "cases": [
+    {
+      "name": "Прямая закупка мантии",
+      "id": "T4_ARMOR_CLOTH_SET1",
+      "config": {
+        "quantity": 17,
+        "volumeMode": "quantity",
+        "rrr": 50,
+        "chainRrr": 50,
+        "station": 300,
+        "chainStation": 600,
+        "focus": false,
+        "eff": 0,
+        "salePrice": 10000,
+        "saleMode": "sell",
+        "tax": 4,
+        "setup": 2.5,
+        "buffer": 10,
+        "chain": false,
+        "startTier": 3,
+        "craftCity": "Caerleon",
+        "craftPlace": "city",
+        "premiumCost": 30000000,
+        "characters": 0,
+        "cycleDays": 3,
+        "quality": 1,
+        "foodIngredientSteps": {},
+        "foodIngredientSettings": {
+          "T3_MEAT": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T4_MEAT": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T5_MEAT": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T6_MEAT": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T7_MEAT": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T8_MEAT": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T4_BUTTER": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T6_BUTTER": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T8_BUTTER": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T4_BREAD": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T3_FLOUR": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T1_FISHCHOPS": {
+            "rrr": 0,
+            "station": 300
+          }
+        },
+        "unitFee": 86.4
+      },
+      "result": {
+        "amount": 17,
+        "ops": 17,
+        "perOp": 858,
+        "focus": 0,
+        "fees": 1468.8000000000002,
+        "materialCost": 1500,
+        "productionCost": 2968.8,
+        "netProductionCost": 2968.8,
+        "cost": 2968.8,
+        "profit": 155981.2,
+        "breakEven": 186.7757156338471,
+        "tax": 6800,
+        "setup": 4250,
+        "premium": 0,
+        "bill": [
+          {
+            "id": "T4_CLOTH",
+            "net": 136,
+            "preserveQuality": false,
+            "city": "Lymhurst",
+            "price": 10,
+            "age": 1,
+            "buy": 150,
+            "cost": 1500,
+            "bufferApplied": 10
+          }
+        ],
+        "stages": [
+          {
+            "id": "T4_ARMOR_CLOTH_SET1",
+            "amount": 17
+          }
+        ]
+      }
+    },
+    {
+      "name": "Мантия с переработкой",
+      "id": "T5_ARMOR_CLOTH_SET1",
+      "config": {
+        "quantity": 17,
+        "volumeMode": "quantity",
+        "rrr": 50,
+        "chainRrr": 50,
+        "station": 300,
+        "chainStation": 600,
+        "focus": false,
+        "eff": 0,
+        "salePrice": 10000,
+        "saleMode": "sell",
+        "tax": 4,
+        "setup": 2.5,
+        "buffer": 10,
+        "chain": true,
+        "startTier": 3,
+        "craftCity": "Caerleon",
+        "craftPlace": "city",
+        "premiumCost": 30000000,
+        "characters": 0,
+        "cycleDays": 3,
+        "quality": 1,
+        "foodIngredientSteps": {},
+        "foodIngredientSettings": {
+          "T3_MEAT": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T4_MEAT": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T5_MEAT": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T6_MEAT": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T7_MEAT": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T8_MEAT": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T4_BUTTER": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T6_BUTTER": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T8_BUTTER": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T4_BREAD": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T3_FLOUR": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T1_FISHCHOPS": {
+            "rrr": 0,
+            "station": 300
+          }
+        },
+        "unitFee": 172.8
+      },
+      "result": {
+        "amount": 17,
+        "ops": 17,
+        "perOp": 1501,
+        "focus": 0,
+        "fees": 6793.200000000001,
+        "materialCost": 3570,
+        "productionCost": 10363.2,
+        "netProductionCost": 10363.2,
+        "cost": 10363.2,
+        "profit": 148586.8,
+        "breakEven": 651.9786096256685,
+        "tax": 6800,
+        "setup": 4250,
+        "premium": 0,
+        "bill": [
+          {
+            "id": "T5_FIBER",
+            "net": 204,
+            "preserveQuality": false,
+            "city": "Lymhurst",
+            "price": 10,
+            "age": 1,
+            "buy": 225,
+            "cost": 2250,
+            "bufferApplied": 10
+          },
+          {
+            "id": "T4_FIBER",
+            "net": 68,
+            "preserveQuality": false,
+            "city": "Lymhurst",
+            "price": 10,
+            "age": 1,
+            "buy": 75,
+            "cost": 750,
+            "bufferApplied": 10
+          },
+          {
+            "id": "T3_FIBER",
+            "net": 34,
+            "preserveQuality": false,
+            "city": "Lymhurst",
+            "price": 10,
+            "age": 1,
+            "buy": 38,
+            "cost": 380,
+            "bufferApplied": 10
+          },
+          {
+            "id": "T2_CLOTH",
+            "net": 17,
+            "preserveQuality": false,
+            "city": "Lymhurst",
+            "price": 10,
+            "age": 1,
+            "buy": 19,
+            "cost": 190,
+            "bufferApplied": 10
+          }
+        ],
+        "stages": [
+          {
+            "id": "T5_ARMOR_CLOTH_SET1",
+            "amount": 17
+          },
+          {
+            "id": "T5_CLOTH",
+            "amount": 136
+          },
+          {
+            "id": "T4_CLOTH",
+            "amount": 68
+          },
+          {
+            "id": "T3_CLOTH",
+            "amount": 34
+          }
+        ]
+      }
+    },
+    {
+      "name": "Цепочка ткани",
+      "id": "T5_CLOTH",
+      "config": {
+        "quantity": 17,
+        "volumeMode": "quantity",
+        "rrr": 50,
+        "chainRrr": 50,
+        "station": 300,
+        "chainStation": 600,
+        "focus": false,
+        "eff": 0,
+        "salePrice": 10000,
+        "saleMode": "sell",
+        "tax": 4,
+        "setup": 2.5,
+        "buffer": 10,
+        "chain": true,
+        "startTier": 3,
+        "craftCity": "Caerleon",
+        "craftPlace": "city",
+        "premiumCost": 30000000,
+        "characters": 0,
+        "cycleDays": 3,
+        "quality": 1,
+        "foodIngredientSteps": {},
+        "foodIngredientSettings": {
+          "T3_MEAT": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T4_MEAT": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T5_MEAT": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T6_MEAT": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T7_MEAT": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T8_MEAT": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T4_BUTTER": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T6_BUTTER": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T8_BUTTER": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T4_BREAD": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T3_FLOUR": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T1_FISHCHOPS": {
+            "rrr": 0,
+            "station": 300
+          }
+        },
+        "unitFee": 10.8
+      },
+      "result": {
+        "amount": 17,
+        "ops": 17,
+        "perOp": 94,
+        "focus": 0,
+        "fees": 298.35,
+        "materialCost": 470,
+        "productionCost": 768.35,
+        "netProductionCost": 768.35,
+        "cost": 768.35,
+        "profit": 158181.65,
+        "breakEven": 48.33910034602076,
+        "tax": 6800,
+        "setup": 4250,
+        "premium": 0,
+        "bill": [
+          {
+            "id": "T5_FIBER",
+            "net": 25.5,
+            "preserveQuality": false,
+            "city": "Lymhurst",
+            "price": 10,
+            "age": 1,
+            "buy": 29,
+            "cost": 290,
+            "bufferApplied": 10
+          },
+          {
+            "id": "T4_FIBER",
+            "net": 8.5,
+            "preserveQuality": false,
+            "city": "Lymhurst",
+            "price": 10,
+            "age": 1,
+            "buy": 10,
+            "cost": 100,
+            "bufferApplied": 10
+          },
+          {
+            "id": "T3_FIBER",
+            "net": 4.25,
+            "preserveQuality": false,
+            "city": "Lymhurst",
+            "price": 10,
+            "age": 1,
+            "buy": 5,
+            "cost": 50,
+            "bufferApplied": 10
+          },
+          {
+            "id": "T2_CLOTH",
+            "net": 2.125,
+            "preserveQuality": false,
+            "city": "Lymhurst",
+            "price": 10,
+            "age": 1,
+            "buy": 3,
+            "cost": 30,
+            "bufferApplied": 10
+          }
+        ],
+        "stages": [
+          {
+            "id": "T5_CLOTH",
+            "amount": 17
+          },
+          {
+            "id": "T4_CLOTH",
+            "amount": 8.5
+          },
+          {
+            "id": "T3_CLOTH",
+            "amount": 4.25
+          }
+        ]
+      }
+    },
+    {
+      "name": "Сумка со своими шагами",
+      "id": "T5_BAG",
+      "config": {
+        "quantity": 17,
+        "volumeMode": "quantity",
+        "rrr": 50,
+        "chainRrr": 50,
+        "station": 300,
+        "chainStation": 600,
+        "focus": false,
+        "eff": 0,
+        "salePrice": 10000,
+        "saleMode": "sell",
+        "tax": 4,
+        "setup": 2.5,
+        "buffer": 10,
+        "chain": false,
+        "startTier": 3,
+        "craftCity": "Caerleon",
+        "craftPlace": "city",
+        "premiumCost": 30000000,
+        "characters": 0,
+        "cycleDays": 3,
+        "quality": 1,
+        "foodIngredientSteps": {},
+        "foodIngredientSettings": {
+          "T3_MEAT": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T4_MEAT": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T5_MEAT": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T6_MEAT": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T7_MEAT": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T8_MEAT": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T4_BUTTER": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T6_BUTTER": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T8_BUTTER": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T4_BREAD": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T3_FLOUR": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T1_FISHCHOPS": {
+            "rrr": 0,
+            "station": 300
+          }
+        },
+        "unitFee": 172.8,
+        "refineSteps": {
+          "T5_CLOTH": true,
+          "T4_CLOTH": true,
+          "T5_LEATHER": true
+        }
+      },
+      "result": {
+        "amount": 17,
+        "ops": 17,
+        "perOp": 1501,
+        "focus": 0,
+        "fees": 6242.400000000001,
+        "materialCost": 3210,
+        "productionCost": 9452.400000000001,
+        "netProductionCost": 9452.400000000001,
+        "cost": 9452.400000000001,
+        "profit": 149497.6,
+        "breakEven": 594.6775715633847,
+        "tax": 6800,
+        "setup": 4250,
+        "premium": 0,
+        "bill": [
+          {
+            "id": "T5_FIBER",
+            "net": 102,
+            "preserveQuality": false,
+            "city": "Lymhurst",
+            "price": 10,
+            "age": 1,
+            "buy": 113,
+            "cost": 1130,
+            "bufferApplied": 10
+          },
+          {
+            "id": "T4_FIBER",
+            "net": 34,
+            "preserveQuality": false,
+            "city": "Lymhurst",
+            "price": 10,
+            "age": 1,
+            "buy": 38,
+            "cost": 380,
+            "bufferApplied": 10
+          },
+          {
+            "id": "T3_CLOTH",
+            "net": 17,
+            "preserveQuality": false,
+            "city": "Lymhurst",
+            "price": 10,
+            "age": 1,
+            "buy": 19,
+            "cost": 190,
+            "bufferApplied": 10
+          },
+          {
+            "id": "T5_HIDE",
+            "net": 102,
+            "preserveQuality": false,
+            "city": "Lymhurst",
+            "price": 10,
+            "age": 1,
+            "buy": 113,
+            "cost": 1130,
+            "bufferApplied": 10
+          },
+          {
+            "id": "T4_LEATHER",
+            "net": 34,
+            "preserveQuality": false,
+            "city": "Lymhurst",
+            "price": 10,
+            "age": 1,
+            "buy": 38,
+            "cost": 380,
+            "bufferApplied": 10
+          }
+        ],
+        "stages": [
+          {
+            "id": "T5_BAG",
+            "amount": 17
+          },
+          {
+            "id": "T5_CLOTH",
+            "amount": 68
+          },
+          {
+            "id": "T4_CLOTH",
+            "amount": 34
+          },
+          {
+            "id": "T5_LEATHER",
+            "amount": 68
+          }
+        ]
+      }
+    },
+    {
+      "name": "Еда, соус, хлеб и мясо",
+      "id": "T8_MEAL_STEW@1",
+      "config": {
+        "quantity": 20,
+        "volumeMode": "quantity",
+        "rrr": 50,
+        "chainRrr": 50,
+        "station": 300,
+        "chainStation": 600,
+        "focus": false,
+        "eff": 0,
+        "salePrice": 10000,
+        "saleMode": "sell",
+        "tax": 4,
+        "setup": 2.5,
+        "buffer": 10,
+        "chain": false,
+        "startTier": 3,
+        "craftCity": "Caerleon",
+        "craftPlace": "city",
+        "premiumCost": 30000000,
+        "characters": 0,
+        "cycleDays": 3,
+        "quality": 1,
+        "foodIngredientSteps": {
+          "T4_BREAD": true,
+          "T3_FLOUR": true,
+          "T8_MEAT": true
+        },
+        "foodIngredientSettings": {
+          "T3_MEAT": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T4_MEAT": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T5_MEAT": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T6_MEAT": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T7_MEAT": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T8_MEAT": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T4_BUTTER": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T6_BUTTER": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T8_BUTTER": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T4_BREAD": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T3_FLOUR": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T1_FISHCHOPS": {
+            "rrr": 0,
+            "station": 300
+          }
+        },
+        "unitFee": 243,
+        "makeSauce": true,
+        "sauceFish": "T4_FISH_FRESHWATER_ALL_COMMON"
+      },
+      "result": {
+        "amount": 20,
+        "ops": 2,
+        "perOp": 7520,
+        "focus": 0,
+        "fees": 6804,
+        "materialCost": 5570,
+        "productionCost": 12374,
+        "netProductionCost": 12374,
+        "cost": 12374,
+        "profit": 174626,
+        "breakEven": 661.711229946524,
+        "tax": 8000,
+        "setup": 5000,
+        "premium": 0,
+        "bill": [
+          {
+            "id": "T8_PUMPKIN",
+            "net": 36,
+            "preserveQuality": false,
+            "city": "Lymhurst",
+            "price": 10,
+            "age": 1,
+            "buy": 40,
+            "cost": 400,
+            "bufferApplied": 10
+          },
+          {
+            "id": "T3_WHEAT",
+            "net": 36,
+            "preserveQuality": false,
+            "city": "Lymhurst",
+            "price": 10,
+            "age": 1,
+            "buy": 40,
+            "cost": 400,
+            "bufferApplied": 10
+          },
+          {
+            "id": "T8_FARM_COW_GROWN",
+            "net": 4,
+            "preserveQuality": false,
+            "city": "Lymhurst",
+            "price": 10,
+            "age": 1,
+            "buy": 5,
+            "cost": 50,
+            "bufferApplied": 10
+          },
+          {
+            "id": "T4_FISH_FRESHWATER_ALL_COMMON",
+            "net": 338,
+            "preserveQuality": false,
+            "city": "Lymhurst",
+            "price": 10,
+            "age": 1,
+            "buy": 372,
+            "cost": 3720,
+            "bufferApplied": 10
+          },
+          {
+            "id": "T1_SEAWEED",
+            "net": 90,
+            "preserveQuality": false,
+            "city": "Lymhurst",
+            "price": 10,
+            "age": 1,
+            "buy": 100,
+            "cost": 1000,
+            "bufferApplied": 10
+          }
+        ],
+        "stages": [
+          {
+            "id": "T8_MEAL_STEW@1",
+            "amount": 20
+          },
+          {
+            "id": "T4_BREAD",
+            "amount": 36
+          },
+          {
+            "id": "T3_FLOUR",
+            "amount": 36
+          },
+          {
+            "id": "T8_MEAT",
+            "amount": 72
+          },
+          {
+            "id": "T1_FISHSAUCE_LEVEL1",
+            "amount": 90
+          },
+          {
+            "id": "T1_FISHCHOPS",
+            "amount": 1350
+          }
+        ]
+      }
+    },
+    {
+      "name": "Зелья",
+      "id": "T2_POTION_HEAL",
+      "config": {
+        "quantity": 17,
+        "volumeMode": "quantity",
+        "rrr": 50,
+        "chainRrr": 50,
+        "station": 300,
+        "chainStation": 600,
+        "focus": false,
+        "eff": 0,
+        "salePrice": 10000,
+        "saleMode": "sell",
+        "tax": 4,
+        "setup": 2.5,
+        "buffer": 10,
+        "chain": false,
+        "startTier": 3,
+        "craftCity": "Caerleon",
+        "craftPlace": "city",
+        "premiumCost": 30000000,
+        "characters": 0,
+        "cycleDays": 3,
+        "quality": 1,
+        "foodIngredientSteps": {},
+        "foodIngredientSettings": {
+          "T3_MEAT": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T4_MEAT": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T5_MEAT": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T6_MEAT": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T7_MEAT": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T8_MEAT": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T4_BUTTER": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T6_BUTTER": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T8_BUTTER": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T4_BREAD": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T3_FLOUR": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T1_FISHCHOPS": {
+            "rrr": 0,
+            "station": 300
+          }
+        },
+        "unitFee": 21.6
+      },
+      "result": {
+        "amount": 15,
+        "ops": 3,
+        "perOp": 280,
+        "focus": 0,
+        "fees": 324,
+        "materialCost": 140,
+        "productionCost": 464,
+        "netProductionCost": 464,
+        "cost": 464,
+        "profit": 139786,
+        "breakEven": 33.08377896613191,
+        "tax": 6000,
+        "setup": 3750,
+        "premium": 0,
+        "bill": [
+          {
+            "id": "T2_AGARIC",
+            "net": 12,
+            "preserveQuality": false,
+            "city": "Lymhurst",
+            "price": 10,
+            "age": 1,
+            "buy": 14,
+            "cost": 140,
+            "bufferApplied": 10
+          }
+        ],
+        "stages": [
+          {
+            "id": "T2_POTION_HEAL",
+            "amount": 15
+          }
+        ]
+      }
+    },
+    {
+      "name": "Два фиксированных артефакта",
+      "id": "T8_ARMOR_CLOTH_AVALON",
+      "config": {
+        "quantity": 2,
+        "volumeMode": "quantity",
+        "rrr": 0,
+        "chainRrr": 50,
+        "station": 300,
+        "chainStation": 600,
+        "focus": false,
+        "eff": 0,
+        "salePrice": 10000,
+        "saleMode": "sell",
+        "tax": 4,
+        "setup": 2.5,
+        "buffer": 25,
+        "chain": false,
+        "startTier": 3,
+        "craftCity": "Caerleon",
+        "craftPlace": "city",
+        "premiumCost": 30000000,
+        "characters": 0,
+        "cycleDays": 3,
+        "quality": 1,
+        "foodIngredientSteps": {},
+        "foodIngredientSettings": {
+          "T3_MEAT": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T4_MEAT": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T5_MEAT": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T6_MEAT": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T7_MEAT": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T8_MEAT": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T4_BUTTER": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T6_BUTTER": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T8_BUTTER": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T4_BREAD": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T3_FLOUR": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T1_FISHCHOPS": {
+            "rrr": 0,
+            "station": 300
+          }
+        },
+        "unitFee": 6566.400000000001
+      },
+      "result": {
+        "amount": 2,
+        "ops": 2,
+        "perOp": 8042,
+        "focus": 0,
+        "fees": 13132.800000000001,
+        "materialCost": 420,
+        "productionCost": 13552.800000000001,
+        "netProductionCost": 13552.800000000001,
+        "cost": 13552.800000000001,
+        "profit": 5147.199999999999,
+        "breakEven": 7247.486631016043,
+        "tax": 800,
+        "setup": 500,
+        "premium": 0,
+        "bill": [
+          {
+            "id": "T8_CLOTH",
+            "net": 32,
+            "preserveQuality": false,
+            "city": "Lymhurst",
+            "price": 10,
+            "age": 1,
+            "buy": 40,
+            "cost": 400,
+            "bufferApplied": 25
+          },
+          {
+            "id": "T8_ARTEFACT_ARMOR_CLOTH_AVALON",
+            "net": 2,
+            "preserveQuality": false,
+            "city": "Lymhurst",
+            "price": 10,
+            "age": 1,
+            "buy": 2,
+            "cost": 20,
+            "bufferApplied": 0
+          }
+        ],
+        "stages": [
+          {
+            "id": "T8_ARMOR_CLOTH_AVALON",
+            "amount": 2
+          }
+        ]
+      }
+    },
+    {
+      "name": "Качество готовой основы",
+      "id": "T4_CAPEITEM_FW_BRIDGEWATCH",
+      "config": {
+        "quantity": 17,
+        "volumeMode": "quantity",
+        "rrr": 50,
+        "chainRrr": 50,
+        "station": 300,
+        "chainStation": 600,
+        "focus": false,
+        "eff": 0,
+        "salePrice": 10000,
+        "saleMode": "sell",
+        "tax": 4,
+        "setup": 2.5,
+        "buffer": 10,
+        "chain": false,
+        "startTier": 3,
+        "craftCity": "Caerleon",
+        "craftPlace": "city",
+        "premiumCost": 30000000,
+        "characters": 0,
+        "cycleDays": 3,
+        "quality": 4,
+        "foodIngredientSteps": {},
+        "foodIngredientSettings": {
+          "T3_MEAT": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T4_MEAT": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T5_MEAT": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T6_MEAT": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T7_MEAT": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T8_MEAT": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T4_BUTTER": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T6_BUTTER": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T8_BUTTER": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T4_BREAD": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T3_FLOUR": {
+            "rrr": 0,
+            "station": 300
+          },
+          "T1_FISHCHOPS": {
+            "rrr": 0,
+            "station": 300
+          }
+        },
+        "unitFee": 54,
+        "recipeIndex": 0
+      },
+      "result": {
+        "amount": 17,
+        "ops": 17,
+        "perOp": 0,
+        "focus": 0,
+        "fees": 918,
+        "materialCost": 1060,
+        "productionCost": 1978,
+        "netProductionCost": 1978,
+        "cost": 1978,
+        "profit": 156972,
+        "breakEven": 124.44164831708083,
+        "tax": 6800,
+        "setup": 4250,
+        "premium": 0,
+        "bill": [
+          {
+            "id": "T4_CAPE",
+            "net": 17,
+            "preserveQuality": true,
+            "city": "Lymhurst",
+            "price": 40,
+            "age": 1,
+            "buy": 17,
+            "cost": 680,
+            "bufferApplied": 0
+          },
+          {
+            "id": "T4_CAPEITEM_FW_BRIDGEWATCH_BP",
+            "net": 17,
+            "preserveQuality": false,
+            "city": "Lymhurst",
+            "price": 10,
+            "age": 1,
+            "buy": 19,
+            "cost": 190,
+            "bufferApplied": 10
+          },
+          {
+            "id": "T1_FACTION_STEPPE_TOKEN_1",
+            "net": 17,
+            "preserveQuality": false,
+            "city": "Lymhurst",
+            "price": 10,
+            "age": 1,
+            "buy": 19,
+            "cost": 190,
+            "bufferApplied": 10
+          }
+        ],
+        "stages": [
+          {
+            "id": "T4_CAPEITEM_FW_BRIDGEWATCH",
+            "amount": 17
+          }
+        ]
+      }
+    }
+  ]
+}

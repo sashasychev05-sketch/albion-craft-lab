@@ -6,7 +6,7 @@ const assert = require('node:assert/strict');
 const { once } = require('node:events');
 async function run(window, updates, folder) {
   window.webContents.setBackgroundThrottling(false);
-  const timeout = setTimeout(() => { console.error('Diagnostics timed out'); require('electron').app.exit(1); }, 240000);
+  const timeout = setTimeout(() => { console.error('Diagnostics timed out'); require('electron').app.exit(1); }, 360000);
   const errors = [];
   window.webContents.on('console-message', event => { if (event.level === 'error') { errors.push(event.message); fs.writeFileSync(path.resolve(folder, 'renderer-errors.json'), JSON.stringify(errors)); } });
   await once(window.webContents, 'did-finish-load');
@@ -24,6 +24,15 @@ async function run(window, updates, folder) {
   assert.equal(result.actionsInitiallyCollapsed, true);
   assert.equal(result.noDefaultProfitGoal, true);
   assert.equal(result.modes.length, 17, JSON.stringify(errors));
+  if (process.argv.includes('--ingredients-only')) {
+    result.ingredients = await require('./ingredient-tree-diagnostics.cjs').run(window, folder);
+    result.errors = errors;
+    assert.deepEqual(errors.filter(message => !/Failed to load resource.*(net::|status of)/.test(message)), []);
+    fs.writeFileSync(path.resolve(folder, 'diagnostics.json'), JSON.stringify(result, null, 2));
+    console.log('Ingredient suite completed');
+    clearTimeout(timeout);
+    return;
+  }
   result.layout = [];
   for (const width of process.argv.includes('--fast-diagnostics') ? [1440] : [1440, 800, 1920]) {
     for (const zoom of process.argv.includes('--fast-diagnostics') ? [1] : [1, 1.25, 1.5]) {
@@ -82,6 +91,7 @@ async function run(window, updates, folder) {
   console.log("Checking workspace");
   result.workspace = await require("./workspace-diagnostics.cjs").run(window, folder);
   result.catalogSearch = await require('./catalog-search-diagnostics.cjs').run(window, folder);
+  result.ingredients = await require('./ingredient-tree-diagnostics.cjs').run(window, folder);
   result.csp = await window.webContents.executeJavaScript("fetch(location.href).then(r => r.headers.get('content-security-policy'))");
   assert.ok(result.csp.includes("script-src 'self'"));
   await window.webContents.executeJavaScript("localStorage.setItem('desktop-diagnostics', 'persisted'); document.querySelector('button.nav[data-mode=character]').click();");

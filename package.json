@@ -1,6 +1,6 @@
 {
   "name": "albion-craft-lab",
-  "version": "1.5.2",
+  "version": "1.5.3",
   "description": "Калькулятор крафта и перевозок Albion Online",
   "author": "Albion Craft Lab",
   "main": "desktop/main.cjs",
