@@ -24,6 +24,16 @@ async function run(window, updates, folder) {
   assert.equal(result.actionsInitiallyCollapsed, true);
   assert.equal(result.noDefaultProfitGoal, true);
   assert.equal(result.modes.length, 17, JSON.stringify(errors));
+  if (process.argv.includes('--catalog-only')) {
+    result.onDemandCatalog = await require('./on-demand-catalog-diagnostics.cjs').run(window, folder);
+    result.catalogSearch = await require('./catalog-search-diagnostics.cjs').run(window, folder);
+    result.errors = errors;
+    assert.deepEqual(errors.filter(message => !/Failed to load resource.*(net::|status of)/.test(message)), []);
+    fs.writeFileSync(path.resolve(folder, 'diagnostics.json'), JSON.stringify(result, null, 2));
+    console.log('Catalog checks completed');
+    clearTimeout(timeout);
+    return;
+  }
   if (process.argv.includes('--interface-only')) {
     result.interface = await require('./interface-regressions.cjs').run(window, folder);
     result.compact = await require('./compact-result-diagnostics.cjs').run(window, folder);
@@ -100,6 +110,7 @@ async function run(window, updates, folder) {
   result.themes = await require('./theme-diagnostics.cjs').run(window, folder);
   console.log("Checking workspace");
   result.workspace = await require("./workspace-diagnostics.cjs").run(window, folder);
+  result.onDemandCatalog = await require('./on-demand-catalog-diagnostics.cjs').run(window, folder);
   result.catalogSearch = await require('./catalog-search-diagnostics.cjs').run(window, folder);
   result.interface = await require('./interface-regressions.cjs').run(window, folder);
   result.compact = await require('./compact-result-diagnostics.cjs').run(window, folder);
