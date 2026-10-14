@@ -21,7 +21,7 @@ async function run(window,folder){const execute=code=>window.webContents.execute
  const actions=await execute(`(()=>{
   ScenarioUI.open('saved');for(const checkbox of document.querySelectorAll('#scenario-list [data-scenario-select]:checked')){checkbox.checked=false;checkbox.dispatchEvent(new Event('change',{bubbles:true}));}document.getElementById('scenario-close').click();
   const initial=ScenarioUI.records().items.length,add=destination=>{document.getElementById('craft-action-destination').value=destination;document.getElementById('craft-action-name').value='Тест '+destination;document.getElementById('craft-action-add').click();return ScenarioUI.records();};
-  document.getElementById('craft-actions').open=true;const compare=add('compare'),save=add('save'),both=add('both');
+  document.getElementById('craft-result-details').open=true;document.getElementById('craft-actions').open=true;const compare=add('compare'),save=add('save'),both=add('both');
   const temp=compare.temporary.at(-1).id;ScenarioUI.restore(temp);const restored=CraftApp.snapshot().result.amount===100&&QualityUI.forecast().rows.reduce((s,r)=>s+r.count,0)===100;
   add('both');const full=add('both'),before=JSON.stringify(full);add('both');const rejected=JSON.stringify(ScenarioUI.records())===before&&document.getElementById('craft-action-status').textContent.includes('четыре');
   return {initial,compare:{saved:compare.items.length,selected:compare.selected.length,temporary:compare.temporary.length},save:{saved:save.items.length,selected:save.selected.length},both:{saved:both.items.length,selected:both.selected.length},restored,rejected,finalSaved:full.items.length};
