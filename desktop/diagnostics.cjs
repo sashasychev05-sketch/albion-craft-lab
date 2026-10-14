@@ -24,6 +24,15 @@ async function run(window, updates, folder) {
   assert.equal(result.actionsInitiallyCollapsed, true);
   assert.equal(result.noDefaultProfitGoal, true);
   assert.equal(result.modes.length, 17, JSON.stringify(errors));
+  if (process.argv.includes('--header-only')) {
+    result.header = await require('./compact-header-diagnostics.cjs').run(window, folder);
+    result.errors = errors;
+    assert.deepEqual(errors.filter(message => !/Failed to load resource.*(net::|status of)/.test(message)), []);
+    fs.writeFileSync(path.resolve(folder, 'diagnostics.json'), JSON.stringify(result, null, 2));
+    console.log('Compact header checks completed');
+    clearTimeout(timeout);
+    return;
+  }
   if (process.argv.includes('--procurement-only')) {
     result.procurement = await require('./compact-procurement-diagnostics.cjs').run(window, folder);
     result.errors = errors;
@@ -98,7 +107,7 @@ async function run(window, updates, folder) {
       await window.webContents.executeJavaScript(`document.querySelector('button.nav[data-mode="${mode}"]').click()`);
       await new Promise(resolve => setTimeout(resolve, 100));
       const layout = await window.webContents.executeJavaScript(`(() => {
-        const r = document.getElementById('app-update').getBoundingClientRect();
+        const r = document.getElementById('header-more').getBoundingClientRect();
         return { activeMode: document.querySelector("button.nav.active").dataset.mode, width: innerWidth, scrollWidth: document.documentElement.scrollWidth, left: r.left, right: r.right, buttonWidth: r.width, screenVisible: !document.getElementById(['food','potions','gear','refine'].includes(document.querySelector('button.nav.active').dataset.mode)?'craft-content':document.querySelector('button.nav.active').dataset.mode+'-content').hidden };
       })()`);
       assert.equal(layout.activeMode, mode);
@@ -155,6 +164,7 @@ async function run(window, updates, folder) {
   result.quickNavigation = await require('./quick-navigation-diagnostics.cjs').run(window, folder);
   result.ingredients = await require('./ingredient-tree-diagnostics.cjs').run(window, folder);
   result.procurement = await require('./compact-procurement-diagnostics.cjs').run(window, folder);
+  result.header = await require('./compact-header-diagnostics.cjs').run(window, folder);
   result.csp = await window.webContents.executeJavaScript("fetch(location.href).then(r => r.headers.get('content-security-policy'))");
   assert.ok(result.csp.includes("script-src 'self'"));
   await window.webContents.executeJavaScript("localStorage.setItem('desktop-diagnostics', 'persisted'); document.querySelector('button.nav[data-mode=character]').click();");

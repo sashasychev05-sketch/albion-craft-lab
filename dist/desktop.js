@@ -19,6 +19,7 @@
     if (message && temporary) statusTimer = setTimeout(() => { status.textContent = ''; status.hidden = true; }, 4000);
   }
   function paint(state) {
+    button.dataset.updatePhase = state.phase;
     panel.querySelector('#app-version').textContent = 'v' + state.currentVersion;
     button.textContent = labels[state.phase] || labels.idle;
     button.disabled = ['checking', 'downloading', 'installing'].includes(state.phase);
