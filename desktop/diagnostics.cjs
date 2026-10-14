@@ -24,6 +24,15 @@ async function run(window, updates, folder) {
   assert.equal(result.actionsInitiallyCollapsed, true);
   assert.equal(result.noDefaultProfitGoal, true);
   assert.equal(result.modes.length, 17, JSON.stringify(errors));
+  if (process.argv.includes('--procurement-only')) {
+    result.procurement = await require('./compact-procurement-diagnostics.cjs').run(window, folder);
+    result.errors = errors;
+    assert.deepEqual(errors.filter(message => !/Failed to load resource.*(net::|status of)/.test(message)), []);
+    fs.writeFileSync(path.resolve(folder, 'diagnostics.json'), JSON.stringify(result, null, 2));
+    console.log('Compact procurement checks completed');
+    clearTimeout(timeout);
+    return;
+  }
   if (process.argv.includes('--missing-data-only')) {
     result.missingData = await require('./missing-data-diagnostics.cjs').run(window, folder);
     result.errors = errors;
@@ -145,6 +154,7 @@ async function run(window, updates, folder) {
   result.missingData = await require('./missing-data-diagnostics.cjs').run(window, folder);
   result.quickNavigation = await require('./quick-navigation-diagnostics.cjs').run(window, folder);
   result.ingredients = await require('./ingredient-tree-diagnostics.cjs').run(window, folder);
+  result.procurement = await require('./compact-procurement-diagnostics.cjs').run(window, folder);
   result.csp = await window.webContents.executeJavaScript("fetch(location.href).then(r => r.headers.get('content-security-policy'))");
   assert.ok(result.csp.includes("script-src 'self'"));
   await window.webContents.executeJavaScript("localStorage.setItem('desktop-diagnostics', 'persisted'); document.querySelector('button.nav[data-mode=character]').click();");
