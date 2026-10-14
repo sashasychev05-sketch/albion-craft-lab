@@ -2,6 +2,7 @@
 const entries=[];
 function measure(entry){const height=entry.nav.getBoundingClientRect().height;if(height>0)entry.scope.style.setProperty('--calculation-jump-height',height+'px');}
 function reveal(target){
+ window.ScreenLayout?.reveal(target);
  BlockFolds.attach();
  for(let node=target;node;node=node.parentElement){
   if(node.tagName==='DETAILS')node.open=true;

@@ -2,7 +2,7 @@
 const KEY='albion-block-folds-v1',main=document.querySelector('main');let states={};try{const saved=JSON.parse(localStorage.getItem(KEY));if(saved&&typeof saved==='object'&&!Array.isArray(saved))states=saved;}catch{}
 const selector='.step-card,.panel,.character-group,.mastery-panel,.food-ingredients-options,.bag-materials,#chain-options';
 function save(){try{localStorage.setItem(KEY,JSON.stringify(states));}catch{}}
-document.querySelectorAll('#craft-content .flow-steps>.step-card').forEach((host,i)=>host.dataset.foldId=['craft-item','craft-volume','craft-sale'][i]);
+document.querySelectorAll('#craft-content .flow-steps>.step-card').forEach((host,i)=>{if(!host.dataset.foldId)host.dataset.foldId=['craft-item','craft-volume','craft-sale'][i];});
 function identity(host,title){const scope=host.closest('[id$="-content"]')?.id||'craft-content';return host.dataset.foldId||scope+'|'+(host.id||host.dataset.characterGroup||title.trim());}
 function apply(host,button,key){const folded=states[key]===true;host.classList.toggle('block-collapsed',folded);button.setAttribute('aria-expanded',String(!folded));button.title=folded?'Развернуть блок':'Свернуть блок';}
 function attach(){for(const host of main.querySelectorAll(selector)){
