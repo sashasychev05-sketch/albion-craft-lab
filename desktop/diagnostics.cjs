@@ -24,6 +24,15 @@ async function run(window, updates, folder) {
   assert.equal(result.actionsInitiallyCollapsed, true);
   assert.equal(result.noDefaultProfitGoal, true);
   assert.equal(result.modes.length, 17, JSON.stringify(errors));
+  if (process.argv.includes('--quick-navigation-only')) {
+    result.quickNavigation = await require('./quick-navigation-diagnostics.cjs').run(window, folder);
+    result.errors = errors;
+    assert.deepEqual(errors.filter(message => !/Failed to load resource.*(net::|status of)/.test(message)), []);
+    fs.writeFileSync(path.resolve(folder, 'diagnostics.json'), JSON.stringify(result, null, 2));
+    console.log('Quick navigation checks completed');
+    clearTimeout(timeout);
+    return;
+  }
   if (process.argv.includes('--advanced-only')) {
     result.advanced = await require('./advanced-settings-diagnostics.cjs').run(window, folder);
     result.errors = errors;
@@ -124,6 +133,7 @@ async function run(window, updates, folder) {
   result.interface = await require('./interface-regressions.cjs').run(window, folder);
   result.compact = await require('./compact-result-diagnostics.cjs').run(window, folder);
   result.advanced = await require('./advanced-settings-diagnostics.cjs').run(window, folder);
+  result.quickNavigation = await require('./quick-navigation-diagnostics.cjs').run(window, folder);
   result.ingredients = await require('./ingredient-tree-diagnostics.cjs').run(window, folder);
   result.csp = await window.webContents.executeJavaScript("fetch(location.href).then(r => r.headers.get('content-security-policy'))");
   assert.ok(result.csp.includes("script-src 'self'"));

@@ -50,7 +50,7 @@ async function run(window,folder){
       const scrollTo=before.flowTop+Math.min(120,(before.flowHeight-before.height)/2);
       await execute(`window.scrollTo({top:${scrollTo},behavior:'instant'})`);await frame();
       const after=await execute(`(()=>{const card=document.querySelector('#craft-content .outcome');return {top:card.getBoundingClientRect().top,position:getComputedStyle(card).position,scroll:scrollY,config:JSON.stringify(CraftApp.saveVariant()),overflow:document.documentElement.scrollWidth>innerWidth+1};})()`);
-      assert.ok(Math.abs(after.top-24)<=2,JSON.stringify({case:c.name,...after}));assert.ok(after.scroll>before.scroll+50);assert.equal(after.config,before.config);assert.equal(after.overflow,false);
+      assert.ok(Math.abs(after.top-Number.parseFloat(await execute(`getComputedStyle(document.querySelector('#craft-content .outcome')).top`)))<=2,JSON.stringify({case:c.name,...after}));assert.ok(after.scroll>before.scroll+50);assert.equal(after.config,before.config);assert.equal(after.overflow,false);
       sticky.push({name:c.name,state:before.state,label:before.label,position:after.position,top:after.top,scroll:after.scroll});
       if(c.name==='missing-return')await screenshot('missing-data-sticky-result.png');
     }
