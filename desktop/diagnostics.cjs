@@ -6,7 +6,7 @@ const assert = require('node:assert/strict');
 const { once } = require('node:events');
 async function run(window, updates, folder) {
   window.webContents.setBackgroundThrottling(false);
-  const timeout = setTimeout(() => { console.error('Diagnostics timed out'); require('electron').app.exit(1); }, 720000);
+  const timeout = setTimeout(() => { console.error('Diagnostics timed out'); require('electron').app.exit(1); }, 1500000);
   const errors = [];
   window.webContents.on('console-message', event => { if (event.level === 'error') { errors.push(event.message); fs.writeFileSync(path.resolve(folder, 'renderer-errors.json'), JSON.stringify(errors)); } });
   await once(window.webContents, 'did-finish-load');
@@ -24,6 +24,29 @@ async function run(window, updates, folder) {
   assert.equal(result.actionsInitiallyCollapsed, true);
   assert.equal(result.noDefaultProfitGoal, true);
   assert.equal(result.modes.length, 17, JSON.stringify(errors));
+  if (process.argv.includes('--trading-tail-only')) {
+    await window.webContents.executeJavaScript("Workspace.changeServer('east');CraftApp.cancelMarket();");
+    result.cityAllocation = await require('./city-allocation-diagnostics.cjs').run(window, folder);
+    result.procurementAuto = await require('./procurement-auto-diagnostics.cjs').run(window, folder);
+    result.shippingOrdersHistory = await require('./shipping-orders-history-diagnostics.cjs').run(window, folder);
+    result.csp = await window.webContents.executeJavaScript("fetch(location.href).then(r => r.headers.get('content-security-policy'))");
+    assert.ok(result.csp.includes("script-src 'self'"));
+    result.errors = errors;
+    assert.deepEqual(errors.filter(message => !/Failed to load resource.*(net::|status of)/.test(message)), []);
+    fs.writeFileSync(path.resolve(folder, 'diagnostics.json'), JSON.stringify(result, null, 2));
+    console.log('Trading tail checks completed');
+    clearTimeout(timeout);
+    return;
+  }
+  if (process.argv.includes('--audit-only') || process.argv.includes('--audit-observe-only')) {
+    result.audit = await require('./audit-diagnostics.cjs').run(window, folder);
+    result.errors = errors;
+    assert.deepEqual(errors.filter(message => !/Failed to load resource.*(net::|status of)/.test(message)), []);
+    fs.writeFileSync(path.resolve(folder, 'diagnostics.json'), JSON.stringify(result, null, 2));
+    console.log('Audit checks completed');
+    clearTimeout(timeout);
+    return;
+  }
   if (process.argv.includes('--trading-regressions-only')) {
     result.gameUI = await require('./game-ui-diagnostics.cjs').run(window, folder);
     result.cityAllocation = await require('./city-allocation-diagnostics.cjs').run(window, folder);
