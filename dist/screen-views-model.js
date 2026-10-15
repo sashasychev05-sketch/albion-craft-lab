@@ -1,0 +1,11 @@
+(function(root){'use strict';
+const KEY='albion-screen-views-v1',modes=['food','potions','gear','refine','luxury'],views=['calculation','procurement','review','custom'];
+const object=x=>x&&typeof x==='object'&&!Array.isArray(x),ids=x=>Array.isArray(x)&&x.length<=200&&x.every(id=>typeof id==='string'&&id.length>0&&id.length<=300);
+function empty(){return {version:1,modes:{}};}
+function validSnapshot(x){return object(x)&&object(x.layout)&&ids(x.layout.order)&&ids(x.layout.hidden)&&['folds','details'].every(key=>object(x[key])&&Object.keys(x[key]).length<=200&&Object.entries(x[key]).every(([id,value])=>id.length>0&&id.length<=300&&typeof value==='boolean'));}
+function read(storage){const raw=storage.getItem(KEY);if(!raw)return empty();const data=JSON.parse(raw);if(!object(data)||data.version!==1||!object(data.modes))throw Error('Не удалось прочитать готовые виды.');const result=empty();for(const mode of modes){if(!Object.hasOwn(data.modes,mode))continue;const state=data.modes[mode];if(!object(state)||!views.includes(state.selected)||!validSnapshot(state.current)||!validSnapshot(state.custom))throw Error('Не удалось прочитать готовые виды.');result.modes[mode]=state;}return result;}
+function preset(view,blocks){if(!views.includes(view)||view==='custom')throw Error('Неизвестный вид.');const visible=new Set(view==='review'?blocks.map(b=>b.role):view==='procurement'?['item','production','sale','purchase','prices','routes']:['item','production','sale','purchase']);return {order:blocks.map(b=>b.id),hidden:blocks.filter(b=>!visible.has(b.role)&&b.hideable!==false).map(b=>b.id)};}
+// Readiness is checked when the view is selected; later input never closes a form.
+function collapse(view,ready){return view==='procurement'&&ready===true;}
+const api={KEY,modes,empty,read,preset,collapse,validSnapshot};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.ScreenViewsModel=api;
+})(typeof window!=='undefined'?window:globalThis);

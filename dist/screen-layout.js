@@ -30,6 +30,7 @@ function apply(){
  opener.disabled=!entry.blocks.length;
 }
 function persist(){try{localStorage.setItem(M.KEY,JSON.stringify(saved));readError='';return true;}catch{error.textContent='Не удалось сохранить вид. Проверьте доступное место и повторите.';return false;}}
+function changed(){document.dispatchEvent(new CustomEvent('screenlayoutchange'));}
 const opener=document.createElement('button');opener.type='button';opener.className='button';opener.id='screen-layout-open';opener.textContent='Настроить экран';opener.onclick=open;document.querySelector('.interface-options h3').after(opener);
 const dialog=document.createElement('dialog');dialog.id='screen-layout-dialog';dialog.className='screen-layout-dialog';dialog.setAttribute('aria-labelledby','screen-layout-title');dialog.setAttribute('aria-describedby','screen-layout-description');
 dialog.innerHTML='<div class="screen-layout-heading"><div><h2 id="screen-layout-title">Настроить экран</h2><p id="screen-layout-section"></p></div><button id="screen-layout-close" class="button" type="button" aria-label="Закрыть настройки экрана">✕</button></div><p id="screen-layout-description">Порядок меняется внутри каждой группы. Скрытие сохраняет введённые данные. Результат остаётся рядом с расчётом.</p><div id="screen-layout-list"></div><p id="screen-layout-error" role="alert"></p><p id="screen-layout-status" class="sr-only" role="status"></p><div class="screen-layout-footer"><button id="screen-layout-default" class="button" type="button">Обычный вид раздела</button><div><button id="screen-layout-cancel" class="button" type="button">Отмена</button><button id="screen-layout-apply" class="button primary" type="button">Применить</button></div></div>';
@@ -60,16 +61,16 @@ dialog.addEventListener('close',()=>{if(dialog.open||!context)return;const previ
 dialog.addEventListener('cancel',event=>{event.preventDefault();close();});
 $('screen-layout-close').onclick=close;$('screen-layout-cancel').onclick=close;
 $('screen-layout-default').onclick=()=>{draft=M.normalize(null,context.entry.blocks);render();announce('Обычный вид подготовлен. Нажмите «Применить», чтобы сохранить.');};
-$('screen-layout-apply').onclick=()=>{if(!sameContext()){close(false);return;}const previous=saved;saved=M.update(saved,context.mode,draft,context.entry.blocks);if(!persist()){saved=previous;return;}apply();close();};
+$('screen-layout-apply').onclick=()=>{if(!sameContext()){close(false);return;}const previous=saved;saved=M.update(saved,context.mode,draft,context.entry.blocks);if(!persist()){saved=previous;return;}apply();close();changed();};
 function reveal(target){const active=current();if(!active)return;let value=M.normalize(saved.modes[active.mode],active.entry.blocks),changed=false;
  for(const block of active.entry.blocks)if((block.node===target||block.node.contains(target))&&value.hidden.includes(block.id)){value=M.visible(value,active.entry.blocks,block.id,true);changed=true;}
- if(changed){const previous=saved;saved=M.update(saved,active.mode,value,active.entry.blocks);if(!persist())saved=previous;apply();}
+ if(changed){const previous=saved;saved=M.update(saved,active.mode,value,active.entry.blocks);if(!persist())saved=previous;apply();document.dispatchEvent(new CustomEvent('screenlayoutchange'));}
 }
-const reset=$('view-reset'),originalReset=reset.onclick;reset.onclick=event=>{originalReset?.(event);const previous=saved;saved=M.empty();if(!persist())saved=previous;apply();};
+const reset=$('view-reset'),originalReset=reset.onclick;reset.onclick=event=>{originalReset?.(event);const previous=saved;saved=M.empty();if(!persist())saved=previous;apply();changed();};
 document.addEventListener('workspacechange',()=>{if(dialog.open&&!sameContext())close(false);apply();});
 // Rendering updates tables inside blocks; apply only when their containing layout changes.
 new MutationObserver(()=>{if(pending)return;pending=true;requestAnimationFrame(()=>{pending=false;apply();});}).observe(main,{childList:true,subtree:true});
-window.ScreenLayout={open,close,apply,reveal,snapshot(){const active=current();return active?{mode:active.mode,blocks:active.entry.blocks.map(({id,group,label,node})=>({id,group,label,available:!node.hidden})),value:M.normalize(saved.modes[active.mode],active.entry.blocks)}:null;}};
+window.ScreenLayout={open,close,apply,reveal,set(value){const active=current();if(!active)return false;const previous=saved;saved=M.update(saved,active.mode,value,active.entry.blocks);if(!persist()){saved=previous;return false;}apply();changed();return true;},snapshot(){const active=current();return active?{mode:active.mode,blocks:active.entry.blocks.map(({id,group,label,node})=>({id,group,label,available:!node.hidden})),value:M.normalize(saved.modes[active.mode],active.entry.blocks)}:null;}};
 const luxFind=$('luxury-content').querySelector('.outcome>.button.primary');luxFind.addEventListener('click',()=>{reveal($('art-routes').closest('.panel'));},true);
 apply();
 })();
