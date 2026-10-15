@@ -1,5 +1,5 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),w={};
-for(const file of ['data.js','food-focus-data.js','gear-data.js','extras-data.js','mastery-data.js','mastery-engine.js','mastery-profile.js','engine.js'])vm.runInNewContext(fs.readFileSync(__dirname+'/../dist/'+file,'utf8'),{window:w});
+for(const file of ['data.js','food-focus-data.js','gear-data.js','extras-data.js','mastery-data.js','mastery-engine.js','mastery-profile.js','city-allocation-model.js','engine.js'])vm.runInNewContext(fs.readFileSync(__dirname+'/../dist/'+file,'utf8'),{window:w});
 const D=w.ALBION_DATA,MD=w.MASTERY_DATA,M=w.MasteryMath,P=w.MasteryProfile,E=w.CraftEngine,recipe=id=>D.recipes.find(r=>r.id===id);
 const catalog=P.catalog(MD,D.recipes,w.GEAR_META,M),ids=catalog.flatMap(g=>g.nodes.map(n=>n.id));
 assert.equal(ids.length,Object.keys(MD.nodes).length);assert.equal(new Set(ids).size,ids.length);assert.ok(catalog.every(g=>P.categories.some(c=>c[0]===g.category)));

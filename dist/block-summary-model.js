@@ -16,6 +16,7 @@ function craft(kind,snapshot){
   if(snapshot.placeReady&&Number.isFinite(Number(c.rrr)))parts.push('Возврат '+fmt(c.rrr)+'%');
   return result(parts,warning,focusId);
  }
+ if(kind==='sale'&&calculation.sales)return result([calculation.sales.demand?'По объёму продаж':'По городам',fmt(calculation.sales.assigned)+' из '+fmt(calculation.amount)+' шт.',...calculation.sales.rows.filter(r=>r.quantity>0).map(r=>r.city)],calculation.saleReady?'':'Проверьте распределение продажи','city-sale-mode');
  if(kind==='sale')return result([c.sellCity,saleNames[c.saleMode]||c.saleMode,positive(c.salePrice)?fmt(c.salePrice)+' / шт.':'Цена не задана',positive(c.salePrice)?c.manualSale?'Вручную':'Рынок':null],positive(c.salePrice)?'':'Нужна цена продажи','sale-price');
 }
 function luxury(kind,{item,config:c,quantity}){

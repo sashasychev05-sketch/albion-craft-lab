@@ -1,6 +1,6 @@
 'use strict';
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
-const w={};for(const file of ['data.js','gear-data.js','extras-data.js','accessory-data.js','mastery-data.js','mastery-engine.js','quality-data.js','quality-engine.js','engine.js'])vm.runInNewContext(fs.readFileSync(__dirname+'/../dist/'+file,'utf8'),{window:w});
+const w={};for(const file of ['data.js','gear-data.js','extras-data.js','accessory-data.js','mastery-data.js','mastery-engine.js','quality-data.js','quality-engine.js','city-allocation-model.js','engine.js'])vm.runInNewContext(fs.readFileSync(__dirname+'/../dist/'+file,'utf8'),{window:w});
 const Q=w.QualityMath,G=w.QUALITY_DATA,MD=w.MASTERY_DATA,M=w.MasteryMath,E=w.CraftEngine;
 const recipe=id=>w.ALBION_DATA.recipes.find(r=>r.id===id),close=(a,b,t=1e-8)=>assert.ok(Math.abs(a-b)<t,`${a} != ${b}`);
 test('base crafting quality and fractional extra rolls match the published sword example',()=>{

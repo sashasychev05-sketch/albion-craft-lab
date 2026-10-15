@@ -694,12 +694,12 @@
         "perOp": 7520,
         "focus": 0,
         "fees": 6804,
-        "materialCost": 5570,
-        "productionCost": 12374,
-        "netProductionCost": 12374,
-        "cost": 12374,
-        "profit": 174626,
-        "breakEven": 661.711229946524,
+        "materialCost": 5560,
+        "productionCost": 12364,
+        "netProductionCost": 12364,
+        "cost": 12364,
+        "profit": 174636,
+        "breakEven": 661.1764705882352,
         "tax": 8000,
         "setup": 5000,
         "premium": 0,
@@ -755,8 +755,8 @@
             "city": "Lymhurst",
             "price": 10,
             "age": 1,
-            "buy": 100,
-            "cost": 1000,
+            "buy": 99,
+            "cost": 990,
             "bufferApplied": 10
           }
         ],
@@ -1164,5 +1164,6 @@
         ]
       }
     }
-  ]
+  ],
+  "roundingCorrection": "Whole quantities plus reserve do not acquire an extra unit from floating point noise (50 × 1.1 = 55)."
 }

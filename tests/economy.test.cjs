@@ -1,5 +1,5 @@
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),w={};
-for(const file of ['data.js','food-focus-data.js','gear-data.js','extras-data.js','island-data.js','economy-data.js','mastery-data.js','mastery-engine.js','engine.js'])vm.runInNewContext(fs.readFileSync(__dirname+'/../dist/'+file,'utf8'),{window:w});
+for(const file of ['data.js','food-focus-data.js','gear-data.js','extras-data.js','island-data.js','economy-data.js','mastery-data.js','mastery-engine.js','city-allocation-model.js','engine.js'])vm.runInNewContext(fs.readFileSync(__dirname+'/../dist/'+file,'utf8'),{window:w});
 const X=w.ECONOMY_DATA,E=require('../dist/economy-engine.js'),config={quantity:2,buyCity:'Lymhurst',sellCity:'Black Market',quality:4,tax:4,setup:2.5,saleMode:'instant',prices:{}},recipe=id=>w.ALBION_DATA.recipes.find(r=>r.id===id);
 test('Food focus uses per-item game values and all 900 cooking specializations contribute once',()=>{
  const r=recipe('T8_MEAL_STEW@1'),levels=Object.fromEntries(Object.keys(w.MASTERY_DATA.nodes).filter(id=>id.startsWith('FARM_COOK')).map(id=>[id,100]));

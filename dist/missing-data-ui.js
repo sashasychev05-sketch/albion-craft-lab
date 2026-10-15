@@ -13,8 +13,8 @@ function collect(){
   if(!r.amount){const automatic=c.focus&&c.volumeMode==='focus'&&['food','potions','gear','bags'].includes(recipe.kind);fields.push(automatic?source('focus-budget','Бюджет фокуса',{min:Math.max(1,r.perOp),step:'1',hint:'Для одной операции нужно '+r.perOp.toLocaleString('ru-RU')+' фокуса.'}):source('quantity','Готовых предметов',{min:recipe.output,step:'1',hint:'Один крафт даёт '+recipe.output+' шт.'}));}
   const loading=$('sale-status').textContent.includes('Загружаем');
   if(!loading){
-   if(!(c.salePrice>0))fields.push(source('sale-price','Цена продажи / шт., серебро',{min:.01,hint:'Город продажи: '+c.sellCity+'.'}));
-   for(const material of r.bill.filter(m=>!(m.price>0)))fields.push({material:material.id,label:ALBION_DATA.names[material.id]||material.id,quality:material.preserveQuality?c.quality:1,city:material.city,min:.01,max:null,step:'any'});
+   if(!r.sales&&!(c.salePrice>0))fields.push(source('sale-price','Цена продажи / шт., серебро',{min:.01,hint:'Город продажи: '+c.sellCity+'.'}));
+   for(const material of r.bill.filter(m=>!m.allocation&&!(m.price>0)))fields.push({material:material.id,label:ALBION_DATA.names[material.id]||material.id,quality:material.preserveQuality?c.quality:1,city:material.city,min:.01,max:null,step:'any'});
    if(r.journals?.supported&&r.journals.count>0){
     const city=c.journalCity||(c.sellCity==='Black Market'?c.craftCity:c.sellCity);
     if(!(r.journals.emptyPrice>0))fields.push(source('craft-journal-empty','Пустой журнал / шт., серебро',{min:.01,event:'change',hint:'Город журналов: '+city+'.'}));

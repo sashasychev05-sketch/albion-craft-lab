@@ -1,6 +1,6 @@
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const S=require('../dist/sale-math.js'),L=require('../dist/craft-ledger.js'),C=require('../dist/catalog-engine.js'),J=require('../dist/craft-journal-engine.js'),I=require('../dist/island-engine.js');
-const w={};for(const f of ['data.js','food-focus-data.js','gear-data.js','extras-data.js','economy-data.js','island-data.js','price-catalog.js','mastery-data.js','training-thresholds-data.js','mastery-engine.js','craft-journal-engine.js','engine.js'])vm.runInNewContext(fs.readFileSync(__dirname+'/../dist/'+f,'utf8'),{window:w});
+const w={};for(const f of ['data.js','food-focus-data.js','gear-data.js','extras-data.js','economy-data.js','island-data.js','price-catalog.js','mastery-data.js','training-thresholds-data.js','mastery-engine.js','craft-journal-engine.js','city-allocation-model.js','engine.js'])vm.runInNewContext(fs.readFileSync(__dirname+'/../dist/'+f,'utf8'),{window:w});
 const recipe=id=>w.ALBION_DATA.recipes.find(r=>r.id===id),memory=()=>{let raw;return {getItem:()=>raw||null,setItem:(_,value)=>raw=value}};
 test('Direct deals use a 5% discount, locked unit cost and all fixed and percentage expenses',()=>{
  const d=S.deal({quantity:20,unitCost:700,average:1000,discount:5,tax:0,setup:0,transport:100,fixedFees:50});assert.equal(d.price,950);assert.equal(d.profit,4850);assert.equal(d.breakEven,707.5);

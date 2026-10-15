@@ -1,5 +1,5 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),w={};
-for(const file of ['data.js','food-focus-data.js','gear-data.js','extras-data.js','mastery-data.js','mastery-engine.js','extras-engine.js','engine.js'])vm.runInNewContext(fs.readFileSync(__dirname+'/../dist/'+file,'utf8'),{window:w});
+for(const file of ['data.js','food-focus-data.js','gear-data.js','extras-data.js','mastery-data.js','mastery-engine.js','extras-engine.js','city-allocation-model.js','engine.js'])vm.runInNewContext(fs.readFileSync(__dirname+'/../dist/'+file,'utf8'),{window:w});
 const D=w.ALBION_DATA,MD=w.MASTERY_DATA,M=w.MasteryMath,E=w.CraftEngine,recipe=id=>D.recipes.find(r=>r.id===id);
 const sword=recipe('T4_MAIN_SWORD'),bag=recipe('T5_BAG'),cloth=recipe('T5_CLOTH'),food=recipe('T8_MEAL_STEW'),heal=recipe('T2_POTION_HEAL');
 assert.equal(M.cost(bag,0),1501);assert.equal(MD.fame[sword.id],540);assert.equal(MD.fame[bag.id],1440);assert.equal(MD.fame[food.id],288);assert.equal(MD.fame[heal.id],32);assert.equal(M.cost(food,0),5510);assert.equal(E.calculate(food,{quantity:10,focus:true,focusBudget:5510,volumeMode:'focus',eff:0,rrr:0},D,()=>({price:1,age:0})).amount,10);

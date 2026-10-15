@@ -24,6 +24,15 @@ async function run(window, updates, folder) {
   assert.equal(result.actionsInitiallyCollapsed, true);
   assert.equal(result.noDefaultProfitGoal, true);
   assert.equal(result.modes.length, 17, JSON.stringify(errors));
+  if (process.argv.includes('--city-allocation-only')) {
+    result.cityAllocation = await require('./city-allocation-diagnostics.cjs').run(window, folder);
+    result.errors = errors;
+    assert.deepEqual(errors.filter(message => !/Failed to load resource.*(net::|status of)/.test(message)), []);
+    fs.writeFileSync(path.resolve(folder, 'diagnostics.json'), JSON.stringify(result, null, 2));
+    console.log('City allocation checks completed');
+    clearTimeout(timeout);
+    return;
+  }
   if (process.argv.includes('--settings-search-only')) {
     result.settingsSearch = await require('./settings-search-diagnostics.cjs').run(window, folder);
     result.errors = errors;
@@ -224,6 +233,7 @@ async function run(window, updates, folder) {
   result.screenViews = await require('./screen-views-diagnostics.cjs').run(window, folder);
   result.procurementFocus = await require('./procurement-focus-diagnostics.cjs').run(window, folder);
   result.settingsSearch = await require('./settings-search-diagnostics.cjs').run(window, folder);
+  result.cityAllocation = await require('./city-allocation-diagnostics.cjs').run(window, folder);
   result.csp = await window.webContents.executeJavaScript("fetch(location.href).then(r => r.headers.get('content-security-policy'))");
   assert.ok(result.csp.includes("script-src 'self'"));
   await window.webContents.executeJavaScript("localStorage.setItem('desktop-diagnostics', 'persisted'); document.querySelector('button.nav[data-mode=character]').click();");
