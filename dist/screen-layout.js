@@ -16,14 +16,15 @@ function register(scope){
 for(const id of new Set(['craft-content','luxury-content',...[...document.querySelectorAll('button.nav[data-mode]')].map(b=>b.dataset.mode+'-content')])){const scope=$(id);if(scope)register(scope);}
 function current(){const mode=Workspace.activeMode(),key=mode==='bags'?'gear':mode,entry=registry.get(craftModes.has(mode)?'craft-content':mode+'-content');if(!Workspace.ticket().tabId||!entry||entry.scope.hidden)return null;for(const block of entry.blocks)block.label=title(block.node);return {mode:key,entry};}
 function reorder(group,order){
- const nodes=order.map(id=>group.blocks.find(b=>b.id===id)?.node).filter(Boolean),present=[...group.parent.children].filter(n=>nodes.includes(n));
+ const nodes=order.map(id=>group.blocks.find(b=>b.id===id)?.node).filter(n=>n?.parentElement===group.parent),present=[...group.parent.children].filter(n=>nodes.includes(n));
  if(present.every((n,i)=>n===nodes[i]))return;
  // Replace only the original block slots. Other controls keep their positions.
  const anchors=present.map(n=>{const anchor=document.createComment('screen-block');n.replaceWith(anchor);return anchor;});anchors.forEach((anchor,i)=>anchor.replaceWith(nodes[i]));
 }
 function apply(){
  const active=current();if(!active){opener.disabled=true;return;}const {mode,entry}=active,value=M.normalize(saved.modes[mode],entry.blocks);
- for(const group of entry.groups){reorder(group,value.order);for(const block of group.blocks)block.node.classList.toggle('screen-block-hidden',value.hidden.includes(block.id));if(group.id==='parameters'){const empty=group.blocks.every(b=>value.hidden.includes(b.id)||b.node.hidden);group.parent.classList.toggle('screen-layout-empty',empty);group.parent.parentElement.classList.toggle('screen-layout-result-only',empty);}}
+ for(const block of entry.blocks)block.node.classList.toggle('screen-block-hidden',value.hidden.includes(block.id));
+ for(const group of entry.groups){reorder(group,value.order);if(group.id==='parameters'){const empty=[...group.parent.children].filter(n=>n.dataset.screenBlock).every(n=>n.hidden||n.classList.contains('screen-block-hidden'));group.parent.classList.toggle('screen-layout-empty',empty);group.parent.parentElement.classList.toggle('screen-layout-result-only',empty);}}
  if(mode==='character')entry.scope.querySelector('.character-layout').classList.toggle('screen-layout-no-preview',value.hidden.includes(entry.blocks[0]?.id));
  const count=value.hidden.length,message=count?'Скрыто блоков: '+count:'';
  if(entry.status.textContent!==message)entry.status.textContent=message;entry.banner.hidden=!count;

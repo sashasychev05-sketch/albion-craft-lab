@@ -15,8 +15,11 @@ test('Procurement only collapses complete forms; calculation and review keep for
  for(const view of ['calculation','review'])assert.equal(M.collapse(view,true),false);
 });
 test('Saved custom layouts and separate section views round-trip',()=>{
- const snapshot={layout:{order:['sale','item'],hidden:['advanced']},folds:{item:true,sale:false},details:{result:true}},value={version:1,modes:{gear:{selected:'review',current:snapshot,custom:snapshot},food:{selected:'custom',current:snapshot,custom:snapshot}}};
+ const snapshot={presentation:'standard',layout:{order:['sale','item'],hidden:['advanced']},folds:{item:true,sale:false},details:{result:true}},value={version:1,modes:{gear:{selected:'review',current:snapshot,custom:snapshot},food:{selected:'custom',current:snapshot,custom:snapshot}}};
  assert.deepEqual(M.read({getItem:()=>JSON.stringify(value)}),value);assert.deepEqual(M.read({getItem:()=>null}),M.empty());
+});
+test('Existing views gain procurement placement while preserving the previous custom arrangement',()=>{
+ const snapshot={layout:{order:['item'],hidden:[]},folds:{item:true},details:{}},data={version:1,modes:{gear:{selected:'procurement',current:snapshot,custom:snapshot}}},raw=JSON.stringify(data),result=M.read({getItem:()=>raw});assert.equal(result.modes.gear.current.presentation,'procurement');assert.equal(result.modes.gear.custom.presentation,'standard');assert.deepEqual(result.modes.gear.current.layout,snapshot.layout);assert.equal(JSON.stringify(data),raw);assert.equal(M.validSnapshot({...snapshot,presentation:'unknown'}),false);
 });
 test('Invalid or obsolete storage cannot apply arbitrary screen state',()=>{
  const snapshot={layout:{order:[],hidden:[]},folds:{},details:{}};

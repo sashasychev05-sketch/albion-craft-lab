@@ -7,10 +7,12 @@ function active(){const layout=ScreenLayout.snapshot();if(!layout||!M.modes.incl
 function nodes(entry){return [...entry.scope.querySelectorAll('[data-screen-block]')];}
 function folded(entry){return nodes(entry).filter(n=>n.matches('.fillable-block[data-fold-key]'));}
 function details(entry){return [...entry.scope.querySelectorAll('[data-screen-view-detail]')];}
-function capture(a){return {layout:a.layout.value,folds:Object.fromEntries(folded(a.entry).map(n=>[n.dataset.foldKey,n.classList.contains('block-collapsed')])),details:Object.fromEntries(details(a.entry).map(n=>[n.dataset.screenViewDetail,n.open]))};}
-function signature(value){return JSON.stringify({layout:value.layout,folds:Object.entries(value.folds).sort(),details:Object.entries(value.details).sort()});}
+function capture(a){return {presentation:a.entry.scope.dataset.screenPresentation||'standard',layout:a.layout.value,folds:Object.fromEntries(folded(a.entry).map(n=>[n.dataset.foldKey,n.classList.contains('block-collapsed')])),details:Object.fromEntries(details(a.entry).map(n=>[n.dataset.screenViewDetail,n.open]))};}
+function signature(value){return JSON.stringify({presentation:value.presentation,layout:value.layout,folds:Object.entries(value.folds).sort(),details:Object.entries(value.details).sort()});}
+function present(entry,value){const compact=value==='procurement';entry.scope.dataset.screenPresentation=compact?'procurement':'standard';if(compact&&entry.panel.parentElement!==entry.steps)entry.steps.prepend(entry.panel);else if(!compact&&entry.panel.parentElement!==entry.scope)entry.anchor.after(entry.panel);if(entry.kind==='craft'){const action=entry.scope.querySelector('.outcome>.button.primary'),label=compact?'К списку закупки':'Посмотреть список закупки ↓';if(action.textContent!==label)action.textContent=label;}ScreenLayout.apply();}
 function persist(){try{localStorage.setItem(M.KEY,JSON.stringify(saved));readError='';writeError='';return true;}catch{writeError='Не удалось сохранить вид. Проверьте доступное место и повторите.';return false;}}
 function restore(a,value,layout=true){
+ present(a.entry,value.presentation);
  if(layout&&!ScreenLayout.set(value.layout))return false;
  for(const node of folded(a.entry))if(Object.hasOwn(value.folds,node.dataset.foldKey))BlockFolds.setCollapsed(node,value.folds[node.dataset.foldKey]);
  for(const node of details(a.entry))if(Object.hasOwn(value.details,node.dataset.screenViewDetail))node.open=value.details[node.dataset.screenViewDetail];
@@ -25,6 +27,7 @@ function select(view){
  try{
   if(view==='custom'){if(!restore(a,custom))throw Error();}
   else{
+   present(a.entry,view==='procurement'?'procurement':'standard');
    const blocks=a.layout.blocks.map(b=>({...b,role:role(nodes(a.entry).find(n=>n.dataset.screenBlock===b.id))}));
    if(!ScreenLayout.set(M.preset(view,blocks)))throw Error();
    BlockSummaries.sync();const ready=new Map(BlockSummaries.snapshot().map(s=>[s.key,s.ready]));
@@ -51,7 +54,9 @@ for(const kind of ['craft','luxury']){
  const configure=document.createElement('button');configure.type='button';configure.className='button screen-views-configure';configure.textContent='Настроить';configure.onclick=()=>ScreenLayout.open();group.append(configure);bar.append(group,status);scope.querySelector('.calculation-jump-nav').before(bar);
  // IDs are assigned before users reorder blocks; titles and DOM positions may change later.
  [...scope.querySelectorAll('.advanced-settings,.outcome details,.wide-fold')].forEach((node,i)=>{node.dataset.screenViewDetail=node.id||kind+'-detail-'+i;node.addEventListener('toggle',schedule);});
- const entry={scope,bar,buttons,status};entries.set(kind,entry);entry.base={layout:{order:[],hidden:[]},folds:Object.fromEntries(folded(entry).map(n=>[n.dataset.foldKey,n.classList.contains('block-collapsed')])),details:Object.fromEntries(details(entry).map(n=>[n.dataset.screenViewDetail,n.open]))};
+ const panel=kind==='craft'?scope.querySelector('.materials-panel'):$('art-city-prices').closest('.panel'),steps=scope.querySelector('.flow-steps'),anchor=document.createComment('procurement-original-slot');panel.before(anchor);panel.classList.add('procurement-focus-panel');
+ const strip=document.createElement('div');strip.className='procurement-context';strip.dataset.blockHeading='true';strip.setAttribute('role','group');strip.setAttribute('aria-label','Партия и итог');strip.innerHTML='<div class="procurement-batch"></div><div class="procurement-totals"><span>Расходы <b data-procurement-cost></b></span><span>Прибыль <b data-procurement-profit></b></span><button class="button" type="button">Параметры партии</button></div>';panel.querySelector(':scope>[data-block-heading],:scope>.section-heading,:scope>h2').after(strip);strip.querySelector('button').onclick=()=>QuickNavigation.go(kind==='craft'?'production':'cargo');
+ const entry={scope,bar,buttons,status,panel,steps,anchor,strip,kind};entries.set(kind,entry);entry.base={presentation:'standard',layout:{order:[],hidden:[]},folds:Object.fromEntries(folded(entry).map(n=>[n.dataset.foldKey,n.classList.contains('block-collapsed')])),details:Object.fromEntries(details(entry).map(n=>[n.dataset.screenViewDetail,n.open]))};
 }
 document.addEventListener('blockfoldchange',()=>{if(!applying)remember();});
 document.addEventListener('screenlayoutchange',()=>{if(!applying)remember();});
@@ -59,7 +64,9 @@ document.addEventListener('workspacechange',sync);
 // Layout changes also arrive from quick navigation and the ingredient tree.
 new MutationObserver(schedule).observe(document.querySelector('main'),{attributes:true,attributeFilter:['class'],subtree:true});
 window.addEventListener('beforeunload',remember);
-const reset=$('view-reset'),originalReset=reset.onclick;reset.onclick=event=>{applying=true;try{originalReset?.(event);saved=M.empty();persist();baselines.clear();for(const entry of entries.values()){for(const node of folded(entry))BlockFolds.setCollapsed(node,false);for(const node of details(entry))node.open=false;entry.base.folds=Object.fromEntries(folded(entry).map(n=>[n.dataset.foldKey,false]));entry.base.details=Object.fromEntries(details(entry).map(n=>[n.dataset.screenViewDetail,false]));}BlockSummaries.sync();const a=active();lastMode=a?.mode||null;if(a)baselines.set(a.mode,capture(a));}finally{applying=false;}const a=active();if(a)render(a);};
+const reset=$('view-reset'),originalReset=reset.onclick;reset.onclick=event=>{applying=true;try{originalReset?.(event);saved=M.empty();persist();baselines.clear();for(const entry of entries.values()){present(entry,'standard');for(const node of folded(entry))BlockFolds.setCollapsed(node,false);for(const node of details(entry))node.open=false;entry.base.folds=Object.fromEntries(folded(entry).map(n=>[n.dataset.foldKey,false]));entry.base.details=Object.fromEntries(details(entry).map(n=>[n.dataset.screenViewDetail,false]));}BlockSummaries.sync();const a=active();lastMode=a?.mode||null;if(a)baselines.set(a.mode,capture(a));}finally{applying=false;}const a=active();if(a)render(a);};
+function syncContext(){for(const entry of entries.values()){const craft=entry.kind==='craft',source=$(craft?'profit':'art-profit'),batch=craft?(()=>{const s=CraftApp.snapshot();return s.recipe.name+' · '+s.result.amount.toLocaleString('ru-RU')+' шт.';})():$('lux-item-summary').textContent+' · '+$('art-weight').textContent;for(const [node,text]of [[entry.strip.querySelector('.procurement-batch'),batch],[entry.strip.querySelector('[data-procurement-cost]'),$(craft?'cost':'art-cost').textContent],[entry.strip.querySelector('[data-procurement-profit]'),source.textContent]])if(node.textContent!==text)node.textContent=text;entry.strip.querySelector('[data-procurement-profit]').classList.toggle('negative',source.classList.contains('negative'));}}
+let contextPending=false;const contextObserver=new MutationObserver(()=>{if(contextPending)return;contextPending=true;requestAnimationFrame(()=>{contextPending=false;syncContext();});});for(const id of ['cost','profit','art-cost','art-profit','art-weight','lux-item-summary','output-tag'])contextObserver.observe($(id),{childList:true,subtree:true,characterData:true});document.addEventListener('craftresultchange',syncContext);document.addEventListener('workspacechange',syncContext);syncContext();
 window.ScreenViews={select,sync,snapshot(){sync();const a=active();return a?{mode:a.mode,selected:saved.modes[a.mode]?.selected||'custom',current:capture(a),custom:saved.modes[a.mode]?.custom||capture(a)}:null;}};
 sync();
 })();

@@ -7,3 +7,23 @@
 .screen-views-configure{margin-left:auto}
 .screen-views-status{margin:7px 0 0;color:var(--muted);font-size:12px;line-height:1.4}
 @media(max-width:560px){.screen-views{padding:9px}.screen-views-caption{display:none}.screen-views .button{padding:7px 8px}.screen-views-configure{margin-left:0}}
+.procurement-context{display:none}
+[data-screen-presentation=procurement] .flow-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;align-items:start}
+[data-screen-presentation=procurement] .flow-steps>.procurement-focus-panel,[data-screen-presentation=procurement] .flow-steps>.advanced-settings,[data-screen-presentation=procurement] .flow-steps>.step-card:not(.block-collapsed){grid-column:1/-1;min-width:0}
+[data-screen-presentation=procurement] .procurement-focus-panel{margin:0;scroll-margin-top:calc(var(--calculation-jump-height,44px) + 24px)}
+[data-screen-presentation=procurement] .procurement-context{display:block;position:sticky;top:calc(var(--calculation-jump-height,44px) + 20px);z-index:30;padding:10px 0;margin:0 0 10px;background:var(--panel);border-bottom:1px solid var(--line)}
+.procurement-batch{font-size:12px;color:var(--ink);overflow-wrap:anywhere;line-height:1.5}
+.procurement-totals{display:flex;align-items:center;flex-wrap:wrap;gap:8px 16px;margin-top:7px;min-width:0}
+.procurement-totals>span{font-size:11px;color:var(--muted)}
+.procurement-totals b{color:var(--ink);font-size:13px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.procurement-totals [data-procurement-profit]{color:var(--green)}
+.procurement-totals [data-procurement-profit].negative{color:var(--red)}
+.procurement-totals .button{font-size:11px;padding:6px 9px;margin-left:auto}
+[data-screen-presentation=procurement] .flow-steps>.step-card.block-collapsed{min-width:0;margin:0;padding:10px!important}
+[data-screen-presentation=procurement] .step-card.block-collapsed>.step-heading{margin:0;gap:0}
+[data-screen-presentation=procurement] .step-card.block-collapsed .step-number{display:none}
+[data-screen-presentation=procurement] .step-card.block-collapsed h2{font:600 12px 'Segoe UI',Arial,sans-serif;line-height:1.4}
+[data-screen-presentation=procurement] .step-card.block-collapsed>.block-summary{margin-top:7px;padding:0;display:flex;align-items:flex-start;flex-direction:column;gap:7px;border:0;background:transparent}
+[data-screen-presentation=procurement] .step-card.block-collapsed .block-summary-text{font-size:11px;line-height:1.5}
+[data-screen-presentation=procurement] .step-card.block-collapsed .block-summary>.button{font-size:11px;padding:5px 8px;align-self:flex-end}
+@media(max-width:700px){[data-screen-presentation=procurement] .flow-steps{grid-template-columns:minmax(0,1fr)}.procurement-totals .button{margin-left:0}[data-screen-presentation=procurement] .step-card.block-collapsed>.block-summary{flex-direction:row;align-items:center}.procurement-totals{gap:7px 12px}}
