@@ -24,6 +24,15 @@ async function run(window, updates, folder) {
   assert.equal(result.actionsInitiallyCollapsed, true);
   assert.equal(result.noDefaultProfitGoal, true);
   assert.equal(result.modes.length, 17, JSON.stringify(errors));
+  if (process.argv.includes('--settings-search-only')) {
+    result.settingsSearch = await require('./settings-search-diagnostics.cjs').run(window, folder);
+    result.errors = errors;
+    assert.deepEqual(errors.filter(message => !/Failed to load resource.*(net::|status of)/.test(message)), []);
+    fs.writeFileSync(path.resolve(folder, 'diagnostics.json'), JSON.stringify(result, null, 2));
+    console.log('Settings search checks completed');
+    clearTimeout(timeout);
+    return;
+  }
   if (process.argv.includes('--procurement-focus-only')) {
     result.procurementFocus = await require('./procurement-focus-diagnostics.cjs').run(window, folder);
     result.errors = errors;
@@ -102,6 +111,15 @@ async function run(window, updates, folder) {
     assert.deepEqual(errors.filter(message => !/Failed to load resource.*(net::|status of)/.test(message)), []);
     fs.writeFileSync(path.resolve(folder, 'diagnostics.json'), JSON.stringify(result, null, 2));
     console.log('Additional settings checks completed');
+    clearTimeout(timeout);
+    return;
+  }
+  if (process.argv.includes('--command-search-only')) {
+    result.catalogSearch = await require('./catalog-search-diagnostics.cjs').run(window, folder);
+    result.errors = errors;
+    assert.deepEqual(errors.filter(message => !/Failed to load resource.*(net::|status of)/.test(message)), []);
+    fs.writeFileSync(path.resolve(folder, 'diagnostics.json'), JSON.stringify(result, null, 2));
+    console.log('Command search checks completed');
     clearTimeout(timeout);
     return;
   }
@@ -205,6 +223,7 @@ async function run(window, updates, folder) {
   result.blockSummaries = await require('./block-summary-diagnostics.cjs').run(window, folder);
   result.screenViews = await require('./screen-views-diagnostics.cjs').run(window, folder);
   result.procurementFocus = await require('./procurement-focus-diagnostics.cjs').run(window, folder);
+  result.settingsSearch = await require('./settings-search-diagnostics.cjs').run(window, folder);
   result.csp = await window.webContents.executeJavaScript("fetch(location.href).then(r => r.headers.get('content-security-policy'))");
   assert.ok(result.csp.includes("script-src 'self'"));
   await window.webContents.executeJavaScript("localStorage.setItem('desktop-diagnostics', 'persisted'); document.querySelector('button.nav[data-mode=character]').click();");
