@@ -24,6 +24,25 @@ async function run(window, updates, folder) {
   assert.equal(result.actionsInitiallyCollapsed, true);
   assert.equal(result.noDefaultProfitGoal, true);
   assert.equal(result.modes.length, 17, JSON.stringify(errors));
+  if (process.argv.includes('--trading-regressions-only')) {
+    result.gameUI = await require('./game-ui-diagnostics.cjs').run(window, folder);
+    result.cityAllocation = await require('./city-allocation-diagnostics.cjs').run(window, folder);
+    result.errors = errors;
+    assert.deepEqual(errors.filter(message => !/Failed to load resource.*(net::|status of)/.test(message)), []);
+    fs.writeFileSync(path.resolve(folder, 'diagnostics.json'), JSON.stringify(result, null, 2));
+    console.log('Existing trading and history regressions completed');
+    clearTimeout(timeout);
+    return;
+  }
+  if (process.argv.includes('--shipping-orders-history-only')) {
+    result.shippingOrdersHistory = await require('./shipping-orders-history-diagnostics.cjs').run(window, folder);
+    result.errors = errors;
+    assert.deepEqual(errors.filter(message => !/Failed to load resource.*(net::|status of)/.test(message)), []);
+    fs.writeFileSync(path.resolve(folder, 'diagnostics.json'), JSON.stringify(result, null, 2));
+    console.log('Shipping, orders and history checks completed');
+    clearTimeout(timeout);
+    return;
+  }
   if (process.argv.includes('--procurement-auto-only')) {
     result.procurementAuto = await require('./procurement-auto-diagnostics.cjs').run(window, folder);
     result.errors = errors;
@@ -244,6 +263,7 @@ async function run(window, updates, folder) {
   result.settingsSearch = await require('./settings-search-diagnostics.cjs').run(window, folder);
   result.cityAllocation = await require('./city-allocation-diagnostics.cjs').run(window, folder);
   result.procurementAuto = await require('./procurement-auto-diagnostics.cjs').run(window, folder);
+  result.shippingOrdersHistory = await require('./shipping-orders-history-diagnostics.cjs').run(window, folder);
   result.csp = await window.webContents.executeJavaScript("fetch(location.href).then(r => r.headers.get('content-security-policy'))");
   assert.ok(result.csp.includes("script-src 'self'"));
   await window.webContents.executeJavaScript("localStorage.setItem('desktop-diagnostics', 'persisted'); document.querySelector('button.nav[data-mode=character]').click();");

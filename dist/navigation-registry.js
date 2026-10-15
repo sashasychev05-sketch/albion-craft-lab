@@ -8,6 +8,7 @@ for(const c of new Set(D.recipes.filter(r=>r.kind==='gear').map(r=>r.category)))
 add('mounts','Маунты','production','mounts');add('resources','Ресурсы');add('refine','Переработка','resources','refine');add('transmutation','Трансмутация','resources','transmutation');add('items','Работа с вещами');for(const [id,label]of [['enchant','Зачарование'],['quality','Улучшение качества'],['salvage','Разбор']])add(id,label,'items',id);
 add('island-group','Остров');add('island','Доходность острова','island-group','island');for(const [id,label,anchor]of [['crops','Грядки','island-add-crop'],['workers','Рабочие','island-add-worker'],['animals','Животные','island-add-animal']])add('island-'+id,label,'island','island',null,anchor);
 add('trade','Торговля');for(const [id,label]of [['luxury','Перевозка роскоши'],['shipping','План перевозок'],['deals','Расчёт сделок']])add(id,label,'trade',id);
+add('buy-orders','Закупочные ордера','trade','shipping',null,'buy-order-planner');
 add('account','Мой кабинет');for(const [id,label]of [['character','Мастерства и персонажи'],['training','Прокачка'],['prices','Мои цены'],['history','История']])add(id,label,'account',id);
 function path(id){const result=[];for(let n=byId.get(id);n;n=byId.get(n.parent))result.unshift(n);return result;}
 const section=id=>{const n=byId.get(id);return n?.mode?{type:'section',id:n.id,mode:n.mode,...(n.filter?{filter:n.filter}:{}),...(n.anchor?{anchor:n.anchor}:{})}:null;};
