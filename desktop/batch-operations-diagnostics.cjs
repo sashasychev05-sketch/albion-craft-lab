@@ -1,0 +1,53 @@
+'use strict';
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),{once}=require('node:events');
+async function run(window,folder){
+ const exec=code=>window.webContents.executeJavaScript(code),pause=ms=>new Promise(r=>setTimeout(r,ms));
+ const shot=async name=>{await exec('new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))');fs.writeFileSync(path.join(folder,name),(await window.webContents.capturePage()).toPNG());};
+ await exec(`(()=>{window.fetch=async()=>({ok:true,json:async()=>[]});CraftApp.cancelMarket();Workspace.setHidden(true);Workspace.tabAction(Workspace.snapshot().active,'others');Workspace.changeServer('europe');window.__opSet=(selector,value,event='input')=>{const input=document.querySelector(selector);if(!input)throw Error('Missing '+selector);input.value=value;input.dispatchEvent(new Event(event,{bubbles:true}));};const base={kind:'purchase',server:'europe',item:'OPS_TEST_HEMP',name:'Пенька для общего закупочного листа',destination:'Fort Sterling',quality:1};const a=BatchCards.add({...base,quantity:12,created:'2020-01-01T00:00:00Z',buys:[{city:'Thetford',quantity:12,price:10}]}),b=BatchCards.add({...base,quantity:8,created:'2020-02-01T00:00:00Z',buys:[{city:'Thetford',quantity:8,price:12}]});window.__opIds=[a.uid,b.uid];document.getElementById('batch-procurement').open=true;__opSet('#batch-op-buy-search','Пенька для общего');const key=BatchOperationsMath.procurement(BatchCards.snapshot().cards,'europe').find(g=>g.item==='OPS_TEST_HEMP').key;__opSet('#batch-op-buy-group',key,'change');__opSet('#batch-op-buy-quantity',15);window.__opBefore=BatchCards.snapshot();})()`);
+ console.log('Checking consolidated partial procurement preview, multi-card commit and undo');
+ assert.deepEqual(await exec(`BatchOperationsUI.snapshot().buyPlan.lines.map(l=>l.quantity)`),[12,3]);
+ assert.equal(await exec(`BatchOperationsUI.snapshot().buyPlan.cost`),156);
+ assert.deepEqual(await exec('BatchCards.snapshot()'),await exec('__opBefore'));
+ await exec(`__opSet('#batch-op-buy-quantity',21);`);assert.equal(await exec(`document.getElementById('batch-op-buy-apply').disabled`),true);
+ await exec(`__opSet('#batch-op-buy-quantity',15);document.getElementById('batch-op-buy-apply').click();`);
+ assert.deepEqual(await exec(`__opIds.map(id=>BatchCards.snapshot().cards.find(c=>c.uid===id).buys[0].bought)`),[12,3]);
+ await exec(`document.getElementById('batch-op-undo').click();`);assert.deepEqual(await exec('BatchCards.snapshot()'),await exec('__opBefore'));
+ await exec(`__opSet('#batch-op-buy-quantity',15);document.getElementById('batch-op-buy-apply').click();document.getElementById('batch-cargo-planner').open=true;const route=BatchOperationsMath.cargo(BatchCards.snapshot().cards,'europe').find(r=>r.origin==='Thetford'&&r.destination==='Fort Sterling');__opSet('#batch-op-route',route.key,'change');__opSet('#batch-op-capacity',10);__opSet('#batch-op-reserve',20);for(const input of document.querySelectorAll('[data-op-cargo-quantity]'))if(!input.dataset.opCargoQuantity.includes('OPS_TEST_HEMP')){input.value=0;input.dispatchEvent(new Event('input',{bubbles:true}));}document.getElementById('batch-op-calculate').click();`);
+ assert.equal(await exec(`BatchOperationsUI.snapshot().cargoPlan`),null);assert.match(await exec(`document.getElementById('batch-op-status').textContent`),/вес/);
+ await exec(`__opSet('[data-op-cargo-weight="OPS_TEST_HEMP"]',2,'change');document.getElementById('batch-op-calculate').click();`);
+ let plan=await exec(`BatchOperationsUI.snapshot().cargoPlan`);assert.equal(plan.trips.length,4);assert.equal(plan.usable,8);assert.equal(plan.weight,30);assert.ok(plan.trips.every(t=>t.weight<=8));
+ await exec(`__opSet('#batch-search','не существующая карточка');`);assert.deepEqual(await exec(`BatchOperationsUI.snapshot().cargoPlan`),plan);await exec(`__opSet('#batch-search','');`);
+ console.log('Checking mixed manifests, combined pickup/delivery and restoration');
+ await exec(`window.__opPreTrip=BatchCards.snapshot();document.querySelector('[data-op-deliver-trip="3"]').click();`);
+ assert.equal(await exec(`__opIds.reduce((sum,id)=>sum+BatchCards.snapshot().cards.find(c=>c.uid===id).buys[0].delivered,0)`),3);
+ assert.equal(await exec(`__opIds.reduce((sum,id)=>sum+BatchCards.snapshot().cards.find(c=>c.uid===id).buys[0].picked,0)`),3);
+ assert.equal(await exec(`document.querySelectorAll('[data-op-deliver-trip]').length`),0);
+ await exec(`document.getElementById('batch-op-undo').click();`);assert.deepEqual(await exec('BatchCards.snapshot()'),await exec('__opPreTrip'));
+ await exec(`document.getElementById('batch-op-calculate').click();`);
+ await exec(`document.getElementById('batch-op-calculate').click();document.getElementById('batch-procurement').scrollIntoView({block:'start'});`);await pause(200);
+ await shot('batch-operations-procurement.png');
+ await exec(`document.getElementById('batch-cargo-planner').scrollIntoView({block:'start'});`);await pause(200);await shot('batch-operations-trips.png');
+ console.log('Checking server-specific settings, saved progress and reload');
+ await exec(`window.__opSaved=BatchCards.snapshot();Workspace.changeServer('west');`);
+ assert.equal(await exec(`document.querySelectorAll('[data-op-deliver-trip]').length`),0);assert.equal(await exec(`document.getElementById('batch-op-capacity').value`),'500');assert.equal(await exec(`document.getElementById('batch-op-undo').disabled`),true);
+ await exec(`Workspace.changeServer('europe');`);assert.equal(await exec(`document.getElementById('batch-op-capacity').value`),'10');
+ const saved=await exec('__opSaved'),loaded=once(window.webContents,'did-finish-load');window.webContents.reload();await loaded;await pause(200);
+ assert.deepEqual(await exec('BatchCards.snapshot()'),saved);
+ await exec(`window.fetch=async()=>({ok:true,json:async()=>[]});CraftApp.cancelMarket();BatchCards.show();document.getElementById('batch-procurement').open=true;document.getElementById('batch-cargo-planner').open=true;const route=BatchOperationsMath.cargo(BatchCards.snapshot().cards,'europe').find(r=>r.origin==='Thetford'&&r.destination==='Fort Sterling');document.getElementById('batch-op-route').value=route.key;document.getElementById('batch-op-route').dispatchEvent(new Event('change',{bubbles:true}));document.getElementById('batch-op-calculate').click();`);
+ assert.equal(await exec(`document.getElementById('batch-op-capacity').value`),'10');assert.equal(await exec(`document.querySelector('[data-op-cargo-weight="OPS_TEST_HEMP"]').value`),'2');
+ const layouts=[];
+ for(const theme of await exec(`[...document.getElementById('theme').options].map(n=>n.value)`))for(const width of [800,1440])for(const zoom of [1,1.5]){
+  window.setSize(width,960);window.webContents.setZoomFactor(zoom);await pause(100);
+  const layout=await exec(`(()=>{document.getElementById('theme').value=${JSON.stringify(theme)};document.getElementById('theme').dispatchEvent(new Event('change',{bubbles:true}));const panel=document.getElementById('batch-operations');return {overflow:panel.scrollWidth>panel.clientWidth+1,inputs:[...panel.querySelectorAll('input,select,button')].every(n=>{const r=n.getBoundingClientRect();return !n.checkVisibility()||r.right<=innerWidth+2&&r.left>=-2;})};})()`);
+  assert.equal(layout.overflow,false,JSON.stringify({theme,width,zoom,...layout}));assert.equal(layout.inputs,true,JSON.stringify({theme,width,zoom,...layout}));layouts.push({theme,width,zoom,...layout});
+ }
+ window.setSize(800,960);window.webContents.setZoomFactor(1.5);await exec(`document.getElementById('batch-cargo-planner').scrollIntoView({block:'start'});`);await shot('batch-operations-narrow.png');window.setSize(1440,960);window.webContents.setZoomFactor(1);
+ const rawPreferences=await exec(`localStorage.getItem(BatchOperationsMath.PREFS)`);
+ await exec(`localStorage.setItem(BatchOperationsMath.PREFS,'{broken transport preferences}');`);let reloaded=once(window.webContents,'did-finish-load');window.webContents.reload();await reloaded;await pause(150);
+ assert.equal(await exec(`!!BatchOperationsUI&&!!BatchCards.store&&!!CraftApp.snapshot().recipe`),true);assert.match(await exec(`document.getElementById('batch-op-settings-status').textContent`),/повреждены/);
+ await exec(`BatchCards.show();const route=BatchOperationsMath.cargo(BatchCards.snapshot().cards,'europe').find(r=>r.origin==='Thetford'&&r.destination==='Fort Sterling');document.getElementById('batch-op-route').value=route.key;document.getElementById('batch-op-route').dispatchEvent(new Event('change',{bubbles:true}));document.querySelector('[data-op-cargo-weight="OPS_TEST_HEMP"]').value=2;document.getElementById('batch-op-calculate').click();`);
+ assert.ok(await exec(`BatchOperationsUI.snapshot().cargoPlan`));assert.equal(await exec(`localStorage.getItem(BatchOperationsMath.PREFS)`),'{broken transport preferences}');
+ await exec(`localStorage.setItem(BatchOperationsMath.PREFS,${JSON.stringify(rawPreferences)});`);reloaded=once(window.webContents,'did-finish-load');window.webContents.reload();await reloaded;await pause(150);assert.equal(await exec(`document.getElementById('batch-op-capacity').value`),'10');
+ return {consolidatedProcurement:true,partialAllocation:true,previewNoMutation:true,undo:true,cargo:true,tripCount:plan.trips.length,capacityWithReserve:plan.usable,pickupAndDelivery:true,serverSettings:true,persistence:true,cardFiltersKeepPlan:true,corruptPreferencesPreserved:true,layouts};
+}
+module.exports={run};

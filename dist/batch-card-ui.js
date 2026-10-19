@@ -8,8 +8,9 @@ panel.innerHTML='<div class="section-heading"><div><h2>Карточки парт
 shipping.panel.prepend(panel);
 const server=()=>shipping.state.server;
 function message(text,bad=false){$('batch-card-status').textContent=text;$('batch-card-status').classList.toggle('negative',bad);}
-const trip=document.createElement('details');trip.id='batch-itinerary';trip.dataset.foldIgnore='';trip.innerHTML='<summary>Получение и доставка по городам <span id="batch-itinerary-count"></span></summary><p class="hint">Все активные партии текущего сервера, независимо от поиска и фильтров. Показаны только уже отмеченные покупки и товары к перевозке. Грузоподъёмность здесь не рассчитывается.</p><div id="batch-itinerary-list"></div>';$('batch-card-list').before(trip);
+const trip=document.createElement('details');trip.id='batch-itinerary';trip.dataset.foldIgnore='';trip.innerHTML='<summary>Получение и доставка по городам <span id="batch-itinerary-count"></span></summary><p class="hint">Все активные партии текущего сервера, независимо от поиска и фильтров. Показаны только уже отмеченные покупки и товары к перевозке. Для распределения по грузоподъёмности откройте «Планировщик рейсов» выше.</p><div id="batch-itinerary-list"></div>';$('batch-card-list').before(trip);
 function renderItinerary(){
+ window.BatchOperationsUI?.render();
  const routes=store?M.itinerary(store.snapshot().cards,server()):[];
  $('batch-itinerary-count').textContent='· '+routes.reduce((sum,r)=>sum+r.lines.length,0)+' позиций';
  $('batch-itinerary-list').innerHTML=routes.map(route=>'<section class="batch-trip"><h3>'+esc(route.action)+' · '+esc(city(route.city))+(route.destination?' → '+esc(city(route.destination)):'')+'</h3>'+route.lines.map(line=>'<div class="batch-task"><span><b>'+esc(line.item)+' · '+fmt(line.quantity)+' шт.</b><small>'+esc(line.cardName)+'</small></span><button type="button" class="button" data-batch-trip-open="'+esc(line.card)+'">Открыть партию</button></div>').join('')+'</section>').join('')||'<p class="hint">Пока нет отмеченных покупок к получению или забранных товаров к доставке.</p>';

@@ -24,6 +24,15 @@ async function run(window, updates, folder) {
   assert.equal(result.actionsInitiallyCollapsed, true);
   assert.equal(result.noDefaultProfitGoal, true);
   assert.equal(result.modes.length, 17, JSON.stringify(errors));
+  if (process.argv.includes('--batch-operations-only')) {
+    result.batchOperations = await require('./batch-operations-diagnostics.cjs').run(window, folder);
+    result.errors = errors;
+    assert.deepEqual(errors.filter(message => !/Failed to load resource.*(net::|status of)/.test(message)), []);
+    fs.writeFileSync(path.resolve(folder, 'diagnostics.json'), JSON.stringify(result, null, 2));
+    console.log('Shared procurement and trip checks completed');
+    clearTimeout(timeout);
+    return;
+  }
   if (process.argv.includes('--batch-cards-only')) {
     result.batchCards = await require('./batch-cards-diagnostics.cjs').run(window, folder);
     result.errors = errors;
@@ -326,6 +335,7 @@ async function run(window, updates, folder) {
   result.procurementAuto = await require('./procurement-auto-diagnostics.cjs').run(window, folder);
   result.shippingOrdersHistory = await require('./shipping-orders-history-diagnostics.cjs').run(window, folder);
   result.batchCards = await require('./batch-cards-diagnostics.cjs').run(window, folder);
+  result.batchOperations = await require('./batch-operations-diagnostics.cjs').run(window, folder);
   result.csp = await window.webContents.executeJavaScript("fetch(location.href).then(r => r.headers.get('content-security-policy'))");
   assert.ok(result.csp.includes("script-src 'self'"));
   await window.webContents.executeJavaScript("localStorage.setItem('desktop-diagnostics', 'persisted'); document.querySelector('button.nav[data-mode=character]').click();");

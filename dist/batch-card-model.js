@@ -94,7 +94,8 @@ function create(storage){
  function commit(next){if(next.cards.reduce((s,c)=>s+c.buys.length+c.sales.length,0)>5000)throw Error('Достигнут лимит строк карточек.');try{storage.setItem(KEY,JSON.stringify(next));}catch{throw Error('Не удалось сохранить карточки. Проверьте свободное место; прежние данные не изменены.');}data=next;}
  function add(seed){if(data.cards.length>=500)throw Error('Можно хранить до 500 карточек.');const card=normalize(seed);summary(card);const next=clone(data);next.cards.push(card);commit(next);return clone(card);}
  function update(uid,edit){const next=clone(data),card=next.cards.find(c=>c.uid===uid);if(!card)throw Error('Карточка не найдена.');edit(card);validate(card);summary(card);commit(next);return clone(card);}
- return {snapshot:()=>clone(data),add,update,duplicate(uid){const seed=clone(data.cards.find(c=>c.uid===uid));if(!seed)throw Error('Карточка не найдена.');seed.made=0;seed.archived=false;for(const r of seed.buys){r.bought=r.picked=r.delivered=0;r.updates=[];}for(const r of seed.sales){r.sold=0;r.updates=[];}return add(seed);}};
+ function transaction(edit){const next=clone(data);edit(next.cards);if(next.cards.length>500)throw Error('Можно хранить до 500 карточек.');const ids=new Set();for(const card of next.cards){summary(card);if(ids.has(card.uid))throw Error('Повтор карточки.');ids.add(card.uid);}commit(next);return clone(next);}
+ return {snapshot:()=>clone(data),add,update,transaction,duplicate(uid){const seed=clone(data.cards.find(c=>c.uid===uid));if(!seed)throw Error('Карточка не найдена.');seed.made=0;seed.archived=false;for(const r of seed.buys){r.bought=r.picked=r.delivered=0;r.updates=[];}for(const r of seed.sales){r.sold=0;r.updates=[];}return add(seed);}};
 }
 const api={KEY,cities,setup,reprice,validate,summary,itinerary,matches,preview,normalize,create};root.BatchCardMath=api;if(typeof module!=='undefined')module.exports=api;
 })(typeof window!=='undefined'?window:globalThis);
