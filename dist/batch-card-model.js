@@ -19,7 +19,7 @@ function reprice(row){
  return {known,value:known?value:null,baseValue:known?row.quantity*row.price:null,initial:row.order&&known?setup(row.quantity,row.price,row.rate):0,fees,remaining,price};
 }
 function validate(card){
- if(!object(card)||!text(card.uid,100)||!['craft','purchase','luxury'].includes(card.kind)||!['europe','west','east'].includes(card.server)||!text(card.item,160)||!text(card.name,160)||!integer(card.quantity)||card.quantity<1||!Number.isInteger(card.quality)||card.quality<1||card.quality>5||!Number.isFinite(Date.parse(card.created))||typeof card.archived!=='boolean'||!integer(card.made,card.kind==='craft'?card.quantity:0)||!text(card.note||' ',500)||!['',...cities].includes(card.destination)||card.otherCost!==null&&!finite(card.otherCost)||!Array.isArray(card.buys)||!Array.isArray(card.sales)||card.buys.length>400||card.sales.length>8)throw Error('Проверьте параметры карточки партии.');
+ if(!object(card)||!text(card.uid,100)||!['craft','purchase','luxury'].includes(card.kind)||!['europe','west','east'].includes(card.server)||!text(card.item,160)||!text(card.name,160)||!integer(card.quantity)||card.quantity<1||!Number.isInteger(card.quality)||card.quality<1||card.quality>5||!Number.isFinite(Date.parse(card.created))||typeof card.archived!=='boolean'||!integer(card.made,card.kind==='craft'?card.quantity:0)||typeof card.note!=='string'||card.note.length>500||!['',...cities].includes(card.destination)||card.otherCost!==null&&!finite(card.otherCost)||!Array.isArray(card.buys)||!Array.isArray(card.sales)||card.buys.length>400||card.sales.length>8)throw Error('Проверьте параметры карточки партии.');
  const ids=new Set();
  for(const [side,rows] of [['buy',card.buys],['sale',card.sales]])for(const row of rows){
   if(!object(row)||!text(row.uid,100)||ids.has(row.uid)||!text(row.item,160)||!text(row.name,160)||!['',...cities].includes(row.city))throw Error('Проверьте товар и город в карточке.');
@@ -52,6 +52,15 @@ function summary(card){
  const tasks=card.buys.flatMap(row=>[{uid:row.uid,field:'picked',city:row.city,item:row.name,quantity:row.bought-row.picked,action:'Забрать'},...(card.destination?[{uid:row.uid,field:'delivered',city:row.city,destination:card.destination,item:row.name,quantity:row.picked-row.delivered,action:'Доставить'}]:[])]).filter(r=>r.quantity>0);
  return {quantity,bought,picked,delivered,sold,readyRows,complete,status,tasks,purchase,cost,net,profit,baseProfit:baseCost!==null&&baseNet!==null?baseNet-baseCost:null,buyFees,saleFees,fees:buyFees+saleFees};
 }
+function itinerary(cards,server){
+ const groups=new Map();
+ for(const card of cards.filter(c=>c.server===server&&!c.archived))for(const task of summary(card).tasks){
+  const key=JSON.stringify([task.field,task.city,task.destination||'']);
+  if(!groups.has(key))groups.set(key,{action:task.action,city:task.city,destination:task.destination||'',lines:[]});
+  groups.get(key).lines.push({card:card.uid,cardName:card.name,row:task.uid,item:task.item,quantity:task.quantity});
+ }
+ return [...groups.values()].sort((a,b)=>a.city.localeCompare(b.city)||a.action.localeCompare(b.action)||a.destination.localeCompare(b.destination));
+}
 function matches(card,{server,kind='all',stage='all',query='',archive=false}={}){
  if(card.server!==server||!archive&&card.archived||kind!=='all'&&card.kind!==kind)return false;
  const normalize=value=>String(value??'').toLocaleLowerCase('ru-RU').replace(/ё/g,'е');
@@ -77,15 +86,15 @@ function preview(card,side,uid,change){
 }
 function normalize(seed){
  const row=(r,sale)=>({uid:uuid(),item:seed.item,name:seed.name,city:'',quantity:seed.quantity,price:null,order:false,rate:2.5,updates:[],...(sale?{sold:0,tax:4}:{bought:0,picked:0,delivered:0}),...clone(r),uid:uuid(),updates:clone(r.updates||[])});
- return validate({uid:uuid(),kind:seed.kind,server:seed.server,item:seed.item,name:seed.name,quantity:seed.quantity,quality:seed.quality||1,created:new Date().toISOString(),archived:false,note:'',destination:'',otherCost:0,made:0,...clone(seed),uid:uuid(),buys:(seed.buys||[]).map(r=>row(r,false)),sales:(seed.sales||[]).map(r=>row(r,true))});
+ return validate({uid:uuid(),kind:seed.kind,server:seed.server,item:seed.item,name:seed.name,quantity:seed.quantity,quality:seed.quality??1,created:new Date().toISOString(),archived:false,note:'',destination:'',otherCost:0,made:0,...clone(seed),uid:uuid(),buys:(seed.buys||[]).map(r=>row(r,false)),sales:(seed.sales||[]).map(r=>row(r,true))});
 }
 function create(storage){
  let data={version:1,cards:[]};const raw=storage.getItem(KEY);
- if(raw)try{data=JSON.parse(raw);if(!object(data)||data.version!==1||!Array.isArray(data.cards)||data.cards.length>500)throw Error();const ids=new Set();for(const card of data.cards){validate(card);if(ids.has(card.uid))throw Error();ids.add(card.uid);}}catch{throw Error('Карточки партий повреждены. Исходные данные сохранены; изменение карточек недоступно.');}
+ if(raw)try{data=JSON.parse(raw);if(!object(data)||data.version!==1||!Array.isArray(data.cards)||data.cards.length>500)throw Error();const ids=new Set();let rows=0;for(const card of data.cards){summary(card);rows+=card.buys.length+card.sales.length;if(ids.has(card.uid)||rows>5000)throw Error();ids.add(card.uid);}}catch{throw Error('Карточки партий повреждены. Исходные данные сохранены; изменение карточек недоступно.');}
  function commit(next){if(next.cards.reduce((s,c)=>s+c.buys.length+c.sales.length,0)>5000)throw Error('Достигнут лимит строк карточек.');try{storage.setItem(KEY,JSON.stringify(next));}catch{throw Error('Не удалось сохранить карточки. Проверьте свободное место; прежние данные не изменены.');}data=next;}
  function add(seed){if(data.cards.length>=500)throw Error('Можно хранить до 500 карточек.');const card=normalize(seed);summary(card);const next=clone(data);next.cards.push(card);commit(next);return clone(card);}
  function update(uid,edit){const next=clone(data),card=next.cards.find(c=>c.uid===uid);if(!card)throw Error('Карточка не найдена.');edit(card);validate(card);summary(card);commit(next);return clone(card);}
  return {snapshot:()=>clone(data),add,update,duplicate(uid){const seed=clone(data.cards.find(c=>c.uid===uid));if(!seed)throw Error('Карточка не найдена.');seed.made=0;seed.archived=false;for(const r of seed.buys){r.bought=r.picked=r.delivered=0;r.updates=[];}for(const r of seed.sales){r.sold=0;r.updates=[];}return add(seed);}};
 }
-const api={KEY,cities,setup,reprice,validate,summary,matches,preview,normalize,create};root.BatchCardMath=api;if(typeof module!=='undefined')module.exports=api;
+const api={KEY,cities,setup,reprice,validate,summary,itinerary,matches,preview,normalize,create};root.BatchCardMath=api;if(typeof module!=='undefined')module.exports=api;
 })(typeof window!=='undefined'?window:globalThis);

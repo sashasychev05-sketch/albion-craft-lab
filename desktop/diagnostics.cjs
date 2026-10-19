@@ -37,14 +37,14 @@ async function run(window, updates, folder) {
     const app = require('electron').app;
     const updater = require('electron-updater').autoUpdater;
     assert.equal(app.isPackaged, true);
-    assert.equal(app.getVersion(), '1.6.2');
-    updater.currentVersion = new (require('semver').SemVer)('1.6.1');
+    assert.equal(app.getVersion(), '1.7.0');
+    updater.currentVersion = new (require('semver').SemVer)('1.6.2');
     const checked = await updates.action();
     assert.equal(checked.phase, 'available', JSON.stringify(checked));
     assert.equal(checked.version, app.getVersion());
     assert.equal(updater.autoDownload, false);
     assert.equal(updater.autoInstallOnAppQuit, false);
-    result.releaseCheck = { installedVersion: app.getVersion(), simulatedSourceVersion: '1.6.1', availableVersion: checked.version, phase: checked.phase, automaticDownload: updater.autoDownload, automaticInstall: updater.autoInstallOnAppQuit };
+    result.releaseCheck = { installedVersion: app.getVersion(), simulatedSourceVersion: '1.6.2', availableVersion: checked.version, phase: checked.phase, automaticDownload: updater.autoDownload, automaticInstall: updater.autoInstallOnAppQuit };
     result.errors = errors;
     assert.deepEqual(errors.filter(message => !/Failed to load resource.*(net::|status of)/.test(message)), []);
     fs.writeFileSync(path.resolve(folder, 'diagnostics.json'), JSON.stringify(result, null, 2));
@@ -262,6 +262,16 @@ async function run(window, updates, folder) {
   }
   window.webContents.setZoomFactor(1);
   window.setSize(1440, 960);
+  if (process.argv.includes('--smoke-only')) {
+    result.csp = await window.webContents.executeJavaScript("fetch(location.href).then(r => r.headers.get('content-security-policy'))");
+    assert.ok(result.csp.includes("script-src 'self'"));
+    result.errors = errors;
+    assert.deepEqual(errors.filter(message => !/Failed to load resource.*(net::|status of)/.test(message)), []);
+    fs.writeFileSync(path.resolve(folder, 'diagnostics.json'), JSON.stringify(result, null, 2));
+    console.log('All section smoke checks completed');
+    clearTimeout(timeout);
+    return;
+  }
   console.log("Checking scenarios");
   await window.webContents.executeJavaScript("Workspace.tabAction(Workspace.snapshot().active, 'others')");
   result.scenarios = await require('./scenario-diagnostics.cjs').run(window, folder);
@@ -315,6 +325,7 @@ async function run(window, updates, folder) {
   result.cityAllocation = await require('./city-allocation-diagnostics.cjs').run(window, folder);
   result.procurementAuto = await require('./procurement-auto-diagnostics.cjs').run(window, folder);
   result.shippingOrdersHistory = await require('./shipping-orders-history-diagnostics.cjs').run(window, folder);
+  result.batchCards = await require('./batch-cards-diagnostics.cjs').run(window, folder);
   result.csp = await window.webContents.executeJavaScript("fetch(location.href).then(r => r.headers.get('content-security-policy'))");
   assert.ok(result.csp.includes("script-src 'self'"));
   await window.webContents.executeJavaScript("localStorage.setItem('desktop-diagnostics', 'persisted'); document.querySelector('button.nav[data-mode=character]').click();");

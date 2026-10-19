@@ -2,3 +2,4 @@
 .batch-card>summary strong{font-size:16px}.batch-task{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px 14px;margin:8px 0}.batch-task>span{flex:1 1 220px}.batch-task>.button{white-space:normal}.batch-board>.hint{max-width:1000px}
 #shipping-content.batch-board-only>:not(#batch-cards-panel){display:none!important}
 .batch-board-controls>label{min-width:0}.batch-board-controls .batch-search{flex:1 1 260px}.batch-search input{width:100%;min-width:0}.batch-board-controls select{max-width:100%}.batch-update-preview{padding:10px 0;border-block:1px solid var(--line)}
+.batch-trip{padding:12px 0;border-top:1px solid var(--line)}.batch-trip small{display:block;color:var(--muted);margin-top:4px}#batch-itinerary>summary{padding:12px 0;cursor:pointer}#batch-itinerary{margin-bottom:18px}
