@@ -42,6 +42,13 @@ function purchasePlan(cards,server,key,quantity){
  if(cost>1e15)throw Error('Слишком большая стоимость закупки.');
  return {type:'purchase',server,key,quantity,cost:known?cost:null,lines,signature:JSON.stringify(group.lines)};
 }
+function orderPlan(cards,server,key,quantity){
+ const group=procurement(cards,server).find(g=>g.key===key);if(!group)throw Error('Закупка уже закрыта.');
+ const candidates=group.lines.map(line=>{const row=cards.find(c=>c.uid===line.card).buys.find(r=>r.uid===line.row);return {...line,quantity:row.quantity-row.bought-(row.ordered||0)};}).filter(l=>l.quantity>0),available=candidates.reduce((s,l)=>s+l.quantity,0);
+ if(!integer(quantity,available)||quantity<1)throw Error('Для новых ордеров доступно '+available+' шт. Укажите положительное целое количество.');
+ let left=quantity;const lines=[];for(const line of candidates){if(!left)break;const count=Math.min(left,line.quantity);lines.push({...line,quantity:count});left-=count;}
+ return {type:'order',server,key,quantity,lines,signature:JSON.stringify(group.lines)};
+}
 function cargo(cards,server){
  const routes=new Map();
  for(const card of active(cards,server))for(const row of card.buys){
@@ -93,13 +100,13 @@ function tripPlan(cards,server,key,options){
 function apply(store,plan,tripIndex=0){
  let receipt;
  store.transaction(cards=>{
-  let fresh;try{fresh=plan.type==='purchase'?purchasePlan(cards,plan.server,plan.key,plan.quantity):plan.type==='delivery'?tripPlan(cards,plan.server,plan.key,plan.options):null;}catch{throw Error('План изменился. Рассчитайте его заново перед отметкой.');}
+  let fresh;try{fresh=plan.type==='purchase'?purchasePlan(cards,plan.server,plan.key,plan.quantity):plan.type==='order'?orderPlan(cards,plan.server,plan.key,plan.quantity):plan.type==='delivery'?tripPlan(cards,plan.server,plan.key,plan.options):null;}catch{throw Error('План изменился. Рассчитайте его заново перед отметкой.');}
   if(!fresh||JSON.stringify(fresh)!==JSON.stringify(plan))throw Error('План изменился. Рассчитайте его заново перед отметкой.');
   if(plan.type==='delivery'&&(!integer(tripIndex,plan.trips.length-1)))throw Error('Рейс не найден.');
-  const lines=plan.type==='purchase'?plan.lines:plan.trips[tripIndex].lines,edits=[];
+  const lines=plan.type==='delivery'?plan.trips[tripIndex].lines:plan.lines,edits=[];
   for(const line of lines){
    const card=cards.find(c=>c.uid===line.card),row=card.buys.find(r=>r.uid===line.row),before=clone(row);
-   if(plan.type==='purchase')row.bought+=line.quantity;else{row.picked+=line.pickup;row.delivered+=line.quantity;}
+   if(plan.type==='purchase'){row.bought+=line.quantity;if(row.ordered!==undefined)row.ordered=Math.max(0,row.ordered-line.quantity);}else if(plan.type==='order')row.ordered=(row.ordered||0)+line.quantity;else{row.picked+=line.pickup;row.delivered+=line.quantity;}
    edits.push({card:card.uid,row:row.uid,context:context(card),before,after:clone(row)});
   }
   receipt={server:plan.server,type:plan.type,edits};
@@ -112,7 +119,7 @@ function undo(store,receipt,server){
   for(const edit of [...receipt.edits].reverse()){
    const card=cards.find(c=>c.uid===edit.card),row=card?.buys.find(r=>r.uid===edit.row);
    if(!card||context(card)!==edit.context||JSON.stringify(row)!==JSON.stringify(edit.after))throw Error('После операции партия изменена. Исправьте отметки вручную в карточке.');
-   Object.assign(row,clone(edit.before));
+   card.buys[card.buys.indexOf(row)]=clone(edit.before);
   }
  });
 }
@@ -128,5 +135,5 @@ function preferences(storage){
  const raw=storage.getItem(PREFS);if(raw)try{data=JSON.parse(raw);validate(data);}catch{throw Error('Настройки рейсов повреждены и сохранены без изменений. Расчёт можно выполнить без сохранения настроек.');}
  return {get(server){if(!servers.includes(server))throw Error('Неизвестный сервер.');return clone(data.servers[server]||{capacity:500,reserve:10,weights:{}});},set(server,state){if(!servers.includes(server))throw Error('Неизвестный сервер.');const next=clone(data);next.servers[server]=clone(state);validate(next);try{storage.setItem(PREFS,JSON.stringify(next));}catch{throw Error('Настройки рейсов не сохранены. Проверьте свободное место.');}data=next;}};
 }
-const api={PREFS,MAX_TRIPS,itemKey,intervalValue,procurement,purchasePlan,cargo,cargoItems,tripPlan,apply,undo,preferences};root.BatchOperationsMath=api;if(typeof module!=='undefined')module.exports=api;
+const api={PREFS,MAX_TRIPS,itemKey,intervalValue,procurement,purchasePlan,orderPlan,cargo,cargoItems,tripPlan,apply,undo,preferences};root.BatchOperationsMath=api;if(typeof module!=='undefined')module.exports=api;
 })(typeof window!=='undefined'?window:globalThis);

@@ -86,7 +86,8 @@ function render(){
  if(cargoPlan)try{if(JSON.stringify(O.tripPlan(cards(),server(),cargoPlan.key,cargoPlan.options))!==JSON.stringify(cargoPlan))cargoPlan=null;}catch{cargoPlan=null;}
  renderCargo();$('batch-op-undo').disabled=!receipts[server()]||!store();
 }
-function receiptSaved(receipt,text){receipts[server()]=receipt;BatchCards.render();message(text);}
+function receiptSaved(receipt,text){receipts[receipt.server]=receipt;BatchCards.render();if(receipt.server===server())message(text);}
+function undoReceipt(targetServer=server()){O.undo(store(),receipts[targetServer],targetServer);delete receipts[targetServer];if(targetServer===server()){quantities={};cargoPlan=null;}BatchCards.render();if(targetServer===server())message('Общая отметка отменена. Предыдущие количества восстановлены.');}
 $('batch-op-buy-search').oninput=renderPurchase;$('batch-op-buy-city').onchange=()=>{buyKey='';renderPurchase();};
 $('batch-op-buy-group').onchange=()=>{buyKey=$('batch-op-buy-group').value;$('batch-op-buy-quantity').value='';previewPurchase();};
 $('batch-op-buy-quantity').oninput=previewPurchase;
@@ -94,7 +95,7 @@ $('batch-op-buy-all').onclick=()=>{$('batch-op-buy-quantity').value=$('batch-op-
 $('batch-op-buy-apply').onclick=()=>{try{if(!buyPlan)throw Error('Сначала проверьте распределение.');const quantity=buyPlan.quantity,receipt=O.apply(store(),buyPlan);$('batch-op-buy-quantity').value='';buyPlan=null;receiptSaved(receipt,'Покупка '+fmt(quantity)+' шт. распределена по партиям. Получение ещё не отмечено.');}catch(e){message(e.message,true);}};
 $('batch-op-route').onchange=()=>{routeKey=$('batch-op-route').value;quantities={};cargoPlan=null;renderCargo();};
 $('batch-op-calculate').onclick=()=>{try{const options=readCargo();cargoPlan=O.tripPlan(cards(),server(),routeKey,options);quantities={...options.quantities};saveSettings(options);renderTrips();message('План готов. Отметьте каждый рейс только после доставки груза.');}catch(e){cargoPlan=null;renderTrips();message(e.message,true);}};
-$('batch-op-undo').onclick=()=>{try{O.undo(store(),receipts[server()],server());delete receipts[server()];quantities={};cargoPlan=null;BatchCards.render();message('Общая отметка отменена. Предыдущие количества восстановлены.');}catch(e){message(e.message,true);}};
+$('batch-op-undo').onclick=()=>{try{undoReceipt();}catch(e){message(e.message,true);}};
 root.addEventListener('input',event=>{
  if(event.target.matches('[data-op-cargo-quantity],[data-op-cargo-weight],#batch-op-capacity,#batch-op-reserve')){cargoPlan=null;renderTrips();}
 });
@@ -112,5 +113,5 @@ root.addEventListener('click',event=>{
   receiptSaved(receipt,'Рейс доставлен. Получение и доставка отмечены во всех его партиях. Рассчитайте оставшийся груз заново.');
  }catch(e){message(e.message,true);}
 });
-window.BatchOperationsUI={render,snapshot:()=>({buyPlan,cargoPlan,routeKey,buyKey})};render();
+window.BatchOperationsUI={render,record:receiptSaved,undo:undoReceipt,hasUndo:target=>!!receipts[target],snapshot:()=>({buyPlan,cargoPlan,routeKey,buyKey})};render();
 })();

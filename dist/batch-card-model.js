@@ -25,6 +25,7 @@ function validate(card){
   if(!object(row)||!text(row.uid,100)||ids.has(row.uid)||!text(row.item,160)||!text(row.name,160)||!['',...cities].includes(row.city))throw Error('Проверьте товар и город в карточке.');
   ids.add(row.uid);reprice(row);
   if(side==='buy'&&(!integer(row.bought,row.quantity)||!integer(row.picked,row.bought)||!integer(row.delivered,row.picked)))throw Error('Доставлено ≤ забрано ≤ куплено ≤ запланировано.');
+  if(side==='buy'&&row.ordered!==undefined&&!integer(row.ordered,row.quantity-row.bought))throw Error('В действующих ордерах не может быть больше незакупленного остатка.');
   if(side==='sale'&&(!integer(row.sold,row.quantity)||!money(row.tax)||row.tax>100))throw Error('Проверьте проданное количество и налог продажи.');
  }
  if(card.kind==='purchase'&&(card.sales.length||card.buys.reduce((s,r)=>s+r.quantity,0)!==card.quantity)||card.kind==='luxury'&&card.buys.reduce((s,r)=>s+r.quantity,0)!==card.quantity||card.kind!=='purchase'&&card.sales.reduce((s,r)=>s+r.quantity,0)!==card.quantity)throw Error('Количество в городах не совпадает с размером партии.');
@@ -64,7 +65,7 @@ function itinerary(cards,server){
 function matches(card,{server,kind='all',stage='all',query='',archive=false}={}){
  if(card.server!==server||!archive&&card.archived||kind!=='all'&&card.kind!==kind)return false;
  const normalize=value=>String(value??'').toLocaleLowerCase('ru-RU').replace(/ё/g,'е');
- const aliases={'Lymhurst':'Лимхёрст','Martlock':'Мартлок','Thetford':'Тетфорд','Bridgewatch':'Бриджвотч','Fort Sterling':'Форт Стерлинг','Caerleon':'Карлион','Brecilien':'Бресилиен','Black Market':'Чёрный рынок'};
+ const aliases={'Lymhurst':'Люмхурст','Martlock':'Мартлок','Thetford':'Тетфорд','Bridgewatch':'Бриджвотч','Fort Sterling':'Форт Стерлинг','Caerleon':'Карлион','Brecilien':'Бресилиен','Black Market':'Чёрный рынок'};
  const haystack=normalize([card.name,card.item,card.note,card.destination,aliases[card.destination],...card.buys.flatMap(r=>[r.name,r.item,r.city,aliases[r.city]]),...card.sales.flatMap(r=>[r.name,r.item,r.city,aliases[r.city]])].join(' '));
  if(!normalize(query).trim().split(/\s+/).every(word=>haystack.includes(word)))return false;
  if(stage==='all')return true;
@@ -85,17 +86,18 @@ function preview(card,side,uid,change){
  }catch(error){return {valid:false,error:error.message};}
 }
 function normalize(seed){
- const row=(r,sale)=>({uid:uuid(),item:seed.item,name:seed.name,city:'',quantity:seed.quantity,price:null,order:false,rate:2.5,updates:[],...(sale?{sold:0,tax:4}:{bought:0,picked:0,delivered:0}),...clone(r),uid:uuid(),updates:clone(r.updates||[])});
+ const row=(r,sale)=>({uid:uuid(),item:seed.item,name:seed.name,city:'',quantity:seed.quantity,price:null,order:false,rate:2.5,updates:[],...(sale?{sold:0,tax:4}:{bought:0,picked:0,delivered:0,ordered:0}),...clone(r),uid:uuid(),updates:clone(r.updates||[])});
  return validate({uid:uuid(),kind:seed.kind,server:seed.server,item:seed.item,name:seed.name,quantity:seed.quantity,quality:seed.quality??1,created:new Date().toISOString(),archived:false,note:'',destination:'',otherCost:0,made:0,...clone(seed),uid:uuid(),buys:(seed.buys||[]).map(r=>row(r,false)),sales:(seed.sales||[]).map(r=>row(r,true))});
 }
+function consumeOrders(before,card){if(!before)return;for(const row of card.buys){const old=before.buys.find(r=>r.uid===row.uid);if(old?.ordered!==undefined&&row.ordered===old.ordered&&row.bought>old.bought)row.ordered=Math.max(0,old.ordered-(row.bought-old.bought));}}
 function create(storage){
  let data={version:1,cards:[]};const raw=storage.getItem(KEY);
  if(raw)try{data=JSON.parse(raw);if(!object(data)||data.version!==1||!Array.isArray(data.cards)||data.cards.length>500)throw Error();const ids=new Set();let rows=0;for(const card of data.cards){summary(card);rows+=card.buys.length+card.sales.length;if(ids.has(card.uid)||rows>5000)throw Error();ids.add(card.uid);}}catch{throw Error('Карточки партий повреждены. Исходные данные сохранены; изменение карточек недоступно.');}
  function commit(next){if(next.cards.reduce((s,c)=>s+c.buys.length+c.sales.length,0)>5000)throw Error('Достигнут лимит строк карточек.');try{storage.setItem(KEY,JSON.stringify(next));}catch{throw Error('Не удалось сохранить карточки. Проверьте свободное место; прежние данные не изменены.');}data=next;}
  function add(seed){if(data.cards.length>=500)throw Error('Можно хранить до 500 карточек.');const card=normalize(seed);summary(card);const next=clone(data);next.cards.push(card);commit(next);return clone(card);}
- function update(uid,edit){const next=clone(data),card=next.cards.find(c=>c.uid===uid);if(!card)throw Error('Карточка не найдена.');edit(card);validate(card);summary(card);commit(next);return clone(card);}
- function transaction(edit){const next=clone(data);edit(next.cards);if(next.cards.length>500)throw Error('Можно хранить до 500 карточек.');const ids=new Set();for(const card of next.cards){summary(card);if(ids.has(card.uid))throw Error('Повтор карточки.');ids.add(card.uid);}commit(next);return clone(next);}
- return {snapshot:()=>clone(data),add,update,transaction,duplicate(uid){const seed=clone(data.cards.find(c=>c.uid===uid));if(!seed)throw Error('Карточка не найдена.');seed.made=0;seed.archived=false;for(const r of seed.buys){r.bought=r.picked=r.delivered=0;r.updates=[];}for(const r of seed.sales){r.sold=0;r.updates=[];}return add(seed);}};
+ function update(uid,edit){const next=clone(data),card=next.cards.find(c=>c.uid===uid);if(!card)throw Error('Карточка не найдена.');edit(card);consumeOrders(data.cards.find(c=>c.uid===uid),card);validate(card);summary(card);commit(next);return clone(card);}
+ function transaction(edit){const next=clone(data);edit(next.cards);if(next.cards.length>500)throw Error('Можно хранить до 500 карточек.');const ids=new Set();for(const card of next.cards){consumeOrders(data.cards.find(c=>c.uid===card.uid),card);summary(card);if(ids.has(card.uid))throw Error('Повтор карточки.');ids.add(card.uid);}commit(next);return clone(next);}
+ return {snapshot:()=>clone(data),add,update,transaction,duplicate(uid){const seed=clone(data.cards.find(c=>c.uid===uid));if(!seed)throw Error('Карточка не найдена.');seed.made=0;seed.archived=false;for(const r of seed.buys){r.bought=r.picked=r.delivered=r.ordered=0;r.updates=[];}for(const r of seed.sales){r.sold=0;r.updates=[];}return add(seed);}};
 }
 const api={KEY,cities,setup,reprice,validate,summary,itinerary,matches,preview,normalize,create};root.BatchCardMath=api;if(typeof module!=='undefined')module.exports=api;
 })(typeof window!=='undefined'?window:globalThis);

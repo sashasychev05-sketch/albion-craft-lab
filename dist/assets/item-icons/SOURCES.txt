@@ -1,0 +1,21 @@
+Albion Online item artwork: copyright Sandbox Interactive GmbH.
+Bundled for item identification in the Albion Craft Lab calculator.
+
+10,488 original 128x128 normal-quality item images:
+https://render.albiononline.com/v1/item/<ITEM_ID>.png?quality=1&size=128
+Official endpoint announcement:
+https://forum.albiononline.com/index.php/Thread/131017-Update-on-API-New-Endpoints/
+
+Two additional original 64x64 material icons, resized to 128x128 for packing:
+QUESTITEM_TOKEN_DRAGONS
+https://albiononline.th.gl/db/materials/questitem_token_dragons
+https://cdn.th.gl/albion-online/icons/db/1d6fc30c.webp
+QUESTITEM_TOKEN_SMUGGLER
+https://albiononline.th.gl/db/materials/questitem_token_smuggler
+https://cdn.th.gl/albion-online/icons/db/d3fcf436.webp
+
+Sources downloaded October 2026. Pixel-identical art is deduplicated.
+158 lossless WebP atlases, 10,490 item IDs, 10,074 unique images.
+127 source IDs without available artwork use local category SVG placeholders.
+Quality 2-5 is represented by a local numbered badge.
+The application does not download item art at runtime.

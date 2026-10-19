@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const assert = require('node:assert/strict');
 const { once } = require('node:events');
-async function run(window, updates, folder) {
+async function run(window, updates, folder, shopping, offlineAttempts = []) {
   window.webContents.setBackgroundThrottling(false);
   const timeout = setTimeout(() => { console.error('Diagnostics timed out'); require('electron').app.exit(1); }, 1500000);
   const errors = [];
@@ -24,6 +24,26 @@ async function run(window, updates, folder) {
   assert.equal(result.actionsInitiallyCollapsed, true);
   assert.equal(result.noDefaultProfitGoal, true);
   assert.equal(result.modes.length, 17, JSON.stringify(errors));
+  if (process.argv.includes('--offline-assets-only')) {
+    result.offlineAssets = await require('./offline-assets-diagnostics.cjs').run(window, folder);
+    result.offlineNetwork = { blocked: offlineAttempts.length, artworkRequests: offlineAttempts.filter(url => /render\.albiononline\.com/.test(url)).length };
+    assert.equal(result.offlineNetwork.artworkRequests, 0);
+    result.errors = errors.filter(message => !/Failed to load resource.*(net::|status of)/.test(message));
+    assert.deepEqual(result.errors, []);
+    fs.writeFileSync(path.resolve(folder, 'diagnostics.json'), JSON.stringify(result, null, 2));
+    console.log('Offline calculation and bundled artwork checks completed');
+    clearTimeout(timeout);
+    return;
+  }
+  if (process.argv.includes('--shopping-overlay-only')) {
+    result.shoppingOverlay = await require('./shopping-overlay-diagnostics.cjs').run(window, folder, shopping);
+    result.errors = process.argv.includes('--offline-network') ? errors.filter(message => !/Failed to load resource.*(net::|status of)/.test(message)) : errors;
+    assert.deepEqual(errors.filter(message => !/Failed to load resource.*(net::|status of)/.test(message)), []);
+    fs.writeFileSync(path.resolve(folder, 'diagnostics.json'), JSON.stringify(result, null, 2));
+    console.log('Shopping overlay checks completed');
+    clearTimeout(timeout);
+    return;
+  }
   if (process.argv.includes('--batch-operations-only')) {
     result.batchOperations = await require('./batch-operations-diagnostics.cjs').run(window, folder);
     result.errors = errors;
