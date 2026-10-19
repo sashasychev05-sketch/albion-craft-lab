@@ -1,0 +1,52 @@
+'use strict';
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),{once}=require('node:events');
+async function run(window,folder){
+ const exec=code=>window.webContents.executeJavaScript(code),pause=ms=>new Promise(r=>setTimeout(r,ms));
+ const shot=async name=>{await exec('new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))');fs.writeFileSync(path.join(folder,name),(await window.webContents.capturePage()).toPNG());};
+ await exec(`(()=>{window.fetch=async()=>({ok:true,json:async()=>[]});Workspace.setHidden(true);window.__setCard=(selector,value,type='change')=>{const input=document.querySelector(selector);if(!input)throw Error('Missing '+selector);if(input.type==='checkbox')input.checked=value;else input.value=value;input.dispatchEvent(new Event(type,{bubbles:true}));};BuyOrderUI.open('T4_FIBER',10000,1,'europe');for(const input of document.querySelectorAll('[data-order-city]')){input.checked=['Lymhurst','Martlock'].includes(input.dataset.orderCity);input.dispatchEvent(new Event('change',{bubbles:true}));}for(const [city,price,limit]of [['Lymhurst',88,4000],['Martlock',90,6000]])for(const [prop,value]of [['price',price],['limit',limit]])__setCard('[data-order-manual="'+city+'"][data-order-property="'+prop+'"]',value,'input');QuickNavigation.reveal(document.getElementById('batch-from-orders'));if(!document.getElementById('batch-from-orders').checkVisibility())throw Error('Purchase card button is hidden');document.getElementById('batch-from-orders').click();})()`);
+ console.log('Checking real purchase-card creation and independent partial city progress');
+ assert.equal(await exec(`Workspace.snapshot().tabs.find(t=>t.id===Workspace.snapshot().active).target.id`),'batches');
+ assert.equal(await exec(`BatchCards.snapshot().cards.length`),1);
+ await exec(`window.__purchase=BatchCards.snapshot().cards[0].uid;__setCard('[data-batch-card="'+__purchase+'"] [data-batch-field="bought"]',2800);__setCard('[data-batch-card="'+__purchase+'"] [data-batch-field="picked"]',1000);`);
+ assert.equal(await exec(`BatchCards.snapshot().cards[0].buys[0].bought`),2800);
+ assert.equal(await exec(`(()=>{const input=document.querySelector('[data-batch-card="'+__purchase+'"] [data-batch-field="bought"]');input.focus();input.dispatchEvent(new Event('change',{bubbles:true}));return input.isConnected&&document.activeElement===input;})()`),true);
+ await exec(`__setCard('[data-batch-card="'+__purchase+'"] [data-batch-field="picked"]',3000);`);
+ assert.equal(await exec(`BatchCards.snapshot().cards[0].buys[0].picked`),1000);assert.match(await exec(`document.getElementById('batch-card-status').textContent`),/Доставлено/);
+ await exec(`__setCard('[data-batch-card="'+__purchase+'"] [data-batch-field="picked"]',1000);(()=>{const row=document.querySelector('[data-batch-card="'+__purchase+'"] [data-update-editor]');row.querySelector('[data-update-value="remaining"]').value=1200;row.querySelector('[data-update-value="price"]').value=91;row.querySelector('[data-update-value="count"]').value=2;row.querySelector('[data-batch-add-update]').click();})();`);
+ assert.equal(await exec(`BatchCardMath.summary(BatchCards.snapshot().cards[0]).buyFees`),5460);
+ assert.equal(await exec(`BatchCards.snapshot().cards[0].buys[1].bought`),0);
+ await exec(`document.querySelector('[data-batch-card="'+__purchase+'"] [data-batch-task="picked"]').click();`);
+ assert.equal(await exec(`BatchCards.snapshot().cards[0].buys[0].picked`),2800);
+ assert.equal(await exec(`document.querySelector('[data-batch-card="'+__purchase+'"] [data-batch-field="picked"]').value`),'2800');
+ await exec(`document.querySelector('[data-batch-card="'+__purchase+'"] [data-batch-fold$="-updates"]').open=true;document.getElementById('batch-cards-panel').scrollIntoView({block:'start'});`);await shot('batch-purchase-updates.png');
+ console.log('Checking craft source quantity, city allocations, unknown prices, production and sale conservation');
+ await exec(`CraftApp.open('T4_POTION_HEAL');CraftApp.saveConfig({volumeMode:'quantity',quantity:100,focus:false,craftCity:'Lymhurst',saleAllocationMode:'single',saleSplits:null,purchaseSplits:{},salePrice:1000,manualSale:true});CraftApp.cancelMarket();QuickNavigation.reveal(document.getElementById('batch-from-craft'));if(!document.getElementById('batch-from-craft').checkVisibility())throw Error('Craft card button is hidden');document.getElementById('batch-from-craft').click();window.__craft=BatchCards.snapshot().cards.find(c=>c.kind==='craft').uid;`);
+ assert.equal(await exec(`BatchCards.snapshot().cards.find(c=>c.uid===__craft).quantity`),100);
+ assert.equal(await exec(`BatchCardMath.summary(BatchCards.snapshot().cards.find(c=>c.uid===__craft)).profit`),null);
+ await exec(`__setCard('[data-batch-card="'+__craft+'"] [data-batch-field="made"]',20);__setCard('[data-batch-card="'+__craft+'"] [data-batch-side="sale"][data-batch-field="sold"]',21);`);
+ assert.equal(await exec(`BatchCards.snapshot().cards.find(c=>c.uid===__craft).sales[0].sold`),0);
+ await exec(`__setCard('[data-batch-card="'+__craft+'"] [data-batch-side="sale"][data-batch-field="sold"]',10);`);
+ assert.equal(await exec(`BatchCards.snapshot().cards.find(c=>c.uid===__craft).sales[0].sold`),10);
+ console.log('Checking luxury source, delivery, buy and sell repricing and profit');
+ await exec(`Workspace.open(Workspace.registry.section('luxury'),{context:{server:'europe'}});__setCard('#art-quantity-mode','manual');__setCard('#art-quantity',100,'input');__setCard('#art-buy-mode','order');__setCard('#art-sell-mode','sell');__setCard('#art-buy-price',700,'input');__setCard('#art-sell-price',1000,'input');__setCard('#art-trip-cost',100,'input');QuickNavigation.reveal(document.getElementById('batch-from-luxury'));if(!document.getElementById('batch-from-luxury').checkVisibility())throw Error('Luxury card button is hidden');document.getElementById('batch-from-luxury').click();window.__luxury=BatchCards.snapshot().cards.find(c=>c.kind==='luxury').uid;`);
+ const base=await exec(`BatchCardMath.summary(BatchCards.snapshot().cards.find(c=>c.uid===__luxury))`);assert.notEqual(base.profit,null);
+ await exec(`__setCard('[data-batch-card="'+__luxury+'"] [data-batch-side="buy"][data-batch-field="bought"]',100);__setCard('[data-batch-card="'+__luxury+'"] [data-batch-side="buy"][data-batch-field="picked"]',100);__setCard('[data-batch-card="'+__luxury+'"] [data-batch-side="buy"][data-batch-field="delivered"]',60);__setCard('[data-batch-card="'+__luxury+'"] [data-batch-side="sale"][data-batch-field="sold"]',20);(()=>{const card=document.querySelector('[data-batch-card="'+__luxury+'"]');for(const [side,remaining,price]of [['buy',40,710],['sale',80,990]]){const editor=document.querySelector('[data-batch-card="'+__luxury+'"] [data-update-editor][data-batch-side="'+side+'"]');editor.querySelector('[data-update-value="remaining"]').value=remaining;editor.querySelector('[data-update-value="price"]').value=price;editor.querySelector('[data-batch-add-update]').click();}})();`);
+ const updated=await exec(`BatchCardMath.summary(BatchCards.snapshot().cards.find(c=>c.uid===__luxury))`);assert.equal(updated.buyFees,710);assert.equal(updated.saleFees,1980);assert.equal(updated.profit,base.profit-400-800*.96-710-1980);
+ console.log('Checking archive, new batches, server isolation and persistence');
+ await exec(`document.querySelector('[data-batch-duplicate="'+__luxury+'"]').click();window.__duplicate=BatchCards.snapshot().cards.at(-1).uid;document.querySelector('[data-batch-archive="'+__duplicate+'"]').click();`);assert.equal(await exec(`!!document.querySelector('[data-batch-card="'+__duplicate+'"]')`),false);
+ await exec(`__setCard('#batch-archive',true);`);assert.equal(await exec(`!!document.querySelector('[data-batch-card="'+__duplicate+'"]')`),true);assert.equal(await exec(`BatchCards.snapshot().cards.at(-1).buys[0].bought`),0);
+ await exec(`Workspace.changeServer('west');`);assert.equal(await exec(`document.querySelectorAll('[data-batch-card]').length`),0);await exec(`Workspace.changeServer('europe');window.__savedCards=BatchCards.snapshot();Workspace.capture();`);
+ const saved=await exec('__savedCards'),loaded=once(window.webContents,'did-finish-load');window.webContents.reload();await loaded;await pause(200);assert.deepEqual(await exec(`BatchCards.snapshot()`),saved);
+ await exec(`window.fetch=async()=>({ok:true,json:async()=>[]});CraftApp.cancelMarket();BatchCards.show();BlockFolds.expandAll();`);
+ console.log('Checking every theme, narrow and wide windows, and high zoom');
+ const layouts=[];
+ for(const theme of await exec(`[...document.getElementById('theme').options].map(n=>n.value)`))for(const width of [800,1440])for(const zoom of [1,1.5]){
+  window.setSize(width,960);window.webContents.setZoomFactor(zoom);await pause(120);
+  const layout=await exec(`(()=>{document.getElementById('theme').value=${JSON.stringify(theme)};document.getElementById('theme').dispatchEvent(new Event('change',{bubbles:true}));document.querySelectorAll('[data-batch-card]').forEach(n=>n.open=true);document.querySelectorAll('.batch-updates').forEach(n=>n.open=true);const p=document.getElementById('batch-cards-panel');return {overflow:p.scrollWidth>p.clientWidth+1,all:[...p.querySelectorAll('input,select')].every(n=>{const r=n.getBoundingClientRect();return !n.checkVisibility()||r.right<=innerWidth+2&&r.left>=-2;})};})()`);
+  assert.equal(layout.overflow,false,JSON.stringify({theme,width,zoom,layout}));assert.equal(layout.all,true,JSON.stringify({theme,width,zoom,layout}));layouts.push({theme,width,zoom,...layout});
+ }
+ window.setSize(1440,960);window.webContents.setZoomFactor(1);await pause(200);await exec(`document.querySelectorAll('[data-batch-card]').forEach((n,i)=>n.open=i===0);document.getElementById('batch-cards-panel').scrollIntoView({block:'start'});`);await shot('batch-cards-overview.png');
+ window.setSize(800,960);window.webContents.setZoomFactor(1.5);await pause(200);await shot('batch-cards-narrow.png');
+ return {purchase:true,craft:true,luxury:true,buyUpdateFee:updated.buyFees,saleUpdateFee:updated.saleFees,profitDelta:updated.profit-base.profit,conservedStock:true,archive:true,duplicate:true,servers:true,persistence:true,layouts};
+}
+module.exports={run};

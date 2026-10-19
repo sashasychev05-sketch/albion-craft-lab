@@ -24,6 +24,15 @@ async function run(window, updates, folder) {
   assert.equal(result.actionsInitiallyCollapsed, true);
   assert.equal(result.noDefaultProfitGoal, true);
   assert.equal(result.modes.length, 17, JSON.stringify(errors));
+  if (process.argv.includes('--batch-cards-only')) {
+    result.batchCards = await require('./batch-cards-diagnostics.cjs').run(window, folder);
+    result.errors = errors;
+    assert.deepEqual(errors.filter(message => !/Failed to load resource.*(net::|status of)/.test(message)), []);
+    fs.writeFileSync(path.resolve(folder, 'diagnostics.json'), JSON.stringify(result, null, 2));
+    console.log('Batch cards checks completed');
+    clearTimeout(timeout);
+    return;
+  }
   if (process.argv.includes('--release-update-only')) {
     const app = require('electron').app;
     const updater = require('electron-updater').autoUpdater;
