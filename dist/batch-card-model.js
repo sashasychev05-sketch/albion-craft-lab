@@ -52,6 +52,29 @@ function summary(card){
  const tasks=card.buys.flatMap(row=>[{uid:row.uid,field:'picked',city:row.city,item:row.name,quantity:row.bought-row.picked,action:'Забрать'},...(card.destination?[{uid:row.uid,field:'delivered',city:row.city,destination:card.destination,item:row.name,quantity:row.picked-row.delivered,action:'Доставить'}]:[])]).filter(r=>r.quantity>0);
  return {quantity,bought,picked,delivered,sold,readyRows,complete,status,tasks,purchase,cost,net,profit,baseProfit:baseCost!==null&&baseNet!==null?baseNet-baseCost:null,buyFees,saleFees,fees:buyFees+saleFees};
 }
+function matches(card,{server,kind='all',stage='all',query='',archive=false}={}){
+ if(card.server!==server||!archive&&card.archived||kind!=='all'&&card.kind!==kind)return false;
+ const normalize=value=>String(value??'').toLocaleLowerCase('ru-RU').replace(/ё/g,'е');
+ const aliases={'Lymhurst':'Лимхёрст','Martlock':'Мартлок','Thetford':'Тетфорд','Bridgewatch':'Бриджвотч','Fort Sterling':'Форт Стерлинг','Caerleon':'Карлион','Brecilien':'Бресилиен','Black Market':'Чёрный рынок'};
+ const haystack=normalize([card.name,card.item,card.note,card.destination,aliases[card.destination],...card.buys.flatMap(r=>[r.name,r.item,r.city,aliases[r.city]]),...card.sales.flatMap(r=>[r.name,r.item,r.city,aliases[r.city]])].join(' '));
+ if(!normalize(query).trim().split(/\s+/).every(word=>haystack.includes(word)))return false;
+ if(stage==='all')return true;
+ const s=summary(card);
+ const stages={purchase:card.buys.some(r=>r.bought<r.quantity),pickup:card.buys.some(r=>r.bought>r.picked),delivery:!!card.destination&&card.buys.some(r=>r.picked>r.delivered),production:card.kind==='craft'&&card.made<card.quantity&&s.readyRows===card.buys.length,sale:card.sales.length>0&&(card.kind==='craft'?card.made:s.delivered)>s.sold,complete:s.complete};
+ return stages[stage]===true;
+}
+function preview(card,side,uid,change){
+ try{
+  if(!['buy','sale'].includes(side))throw Error('Неизвестная сторона ордера.');
+  const before=summary(card),next=clone(card),row=(side==='buy'?next.buys:next.sales).find(r=>r.uid===uid);
+  if(!row)throw Error('Ордер не найден.');
+  row.updates.push({...change});const after=summary(next),fee=change.exactFee===null?setup(change.remaining,change.price,row.rate):change.exactFee;
+  const firstProfit=after.profit===null?null:after.profit+fee*(change.count-1),unlimited=firstProfit!==null&&firstProfit>=0&&fee===0;
+  const ratio=firstProfit/fee,tolerance=Number.EPSILON*Math.max(1,Math.abs(ratio))*8;
+  const maxRepeats=firstProfit===null?null:firstProfit<0?0:unlimited?null:Math.max(0,Math.min(1000,1+Math.floor(ratio+tolerance)));
+  return {valid:true,fee:fee*change.count,profit:after.profit,delta:before.profit===null||after.profit===null?null:after.profit-before.profit,maxRepeats,unlimited,loss:after.profit!==null&&after.profit<0};
+ }catch(error){return {valid:false,error:error.message};}
+}
 function normalize(seed){
  const row=(r,sale)=>({uid:uuid(),item:seed.item,name:seed.name,city:'',quantity:seed.quantity,price:null,order:false,rate:2.5,updates:[],...(sale?{sold:0,tax:4}:{bought:0,picked:0,delivered:0}),...clone(r),uid:uuid(),updates:clone(r.updates||[])});
  return validate({uid:uuid(),kind:seed.kind,server:seed.server,item:seed.item,name:seed.name,quantity:seed.quantity,quality:seed.quality||1,created:new Date().toISOString(),archived:false,note:'',destination:'',otherCost:0,made:0,...clone(seed),uid:uuid(),buys:(seed.buys||[]).map(r=>row(r,false)),sales:(seed.sales||[]).map(r=>row(r,true))});
@@ -64,5 +87,5 @@ function create(storage){
  function update(uid,edit){const next=clone(data),card=next.cards.find(c=>c.uid===uid);if(!card)throw Error('Карточка не найдена.');edit(card);validate(card);summary(card);commit(next);return clone(card);}
  return {snapshot:()=>clone(data),add,update,duplicate(uid){const seed=clone(data.cards.find(c=>c.uid===uid));if(!seed)throw Error('Карточка не найдена.');seed.made=0;seed.archived=false;for(const r of seed.buys){r.bought=r.picked=r.delivered=0;r.updates=[];}for(const r of seed.sales){r.sold=0;r.updates=[];}return add(seed);}};
 }
-const api={KEY,cities,setup,reprice,validate,summary,normalize,create};root.BatchCardMath=api;if(typeof module!=='undefined')module.exports=api;
+const api={KEY,cities,setup,reprice,validate,summary,matches,preview,normalize,create};root.BatchCardMath=api;if(typeof module!=='undefined')module.exports=api;
 })(typeof window!=='undefined'?window:globalThis);
