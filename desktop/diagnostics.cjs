@@ -66,14 +66,14 @@ async function run(window, updates, folder, shopping, offlineAttempts = []) {
     const app = require('electron').app;
     const updater = require('electron-updater').autoUpdater;
     assert.equal(app.isPackaged, true);
-    assert.equal(app.getVersion(), '1.7.0');
-    updater.currentVersion = new (require('semver').SemVer)('1.6.2');
+    assert.equal(app.getVersion(), '1.8.0');
+    updater.currentVersion = new (require('semver').SemVer)('1.7.0');
     const checked = await updates.action();
     assert.equal(checked.phase, 'available', JSON.stringify(checked));
     assert.equal(checked.version, app.getVersion());
     assert.equal(updater.autoDownload, false);
     assert.equal(updater.autoInstallOnAppQuit, false);
-    result.releaseCheck = { installedVersion: app.getVersion(), simulatedSourceVersion: '1.6.2', availableVersion: checked.version, phase: checked.phase, automaticDownload: updater.autoDownload, automaticInstall: updater.autoInstallOnAppQuit };
+    result.releaseCheck = { installedVersion: app.getVersion(), simulatedSourceVersion: '1.7.0', availableVersion: checked.version, phase: checked.phase, automaticDownload: updater.autoDownload, automaticInstall: updater.autoInstallOnAppQuit };
     result.errors = errors;
     assert.deepEqual(errors.filter(message => !/Failed to load resource.*(net::|status of)/.test(message)), []);
     fs.writeFileSync(path.resolve(folder, 'diagnostics.json'), JSON.stringify(result, null, 2));
