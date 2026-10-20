@@ -8,7 +8,11 @@ function bounds(saved,areas){
  const width=Math.min(area.width,good?saved.width:370),height=Math.min(area.height,good?saved.height:560);
  return {width,height,x:good?clamp(saved.x,area.x,area.x+area.width-width):area.x+Math.max(0,area.width-width-16),y:good?clamp(saved.y,area.y,area.y+area.height-height):area.y+Math.min(48,Math.max(0,area.height-height))};
 }
-function normalize(saved,areas){return {version:1,bounds:bounds(saved?.version===1?saved.bounds:null,areas),opacity:typeof saved?.opacity==='number'&&Number.isFinite(saved.opacity)?clamp(saved.opacity,.55,1):1,pinned:typeof saved?.pinned==='boolean'?saved.pinned:true};}
+function normalize(saved,areas){
+ // Version 1 faded the entire window. Keep placement, but start with a translucent background.
+ const opacity=saved?.version===2?saved.backgroundOpacity:saved?.version===1&&saved.opacity<1?saved.opacity:undefined;
+ return {version:2,bounds:bounds([1,2].includes(saved?.version)?saved.bounds:null,areas),backgroundOpacity:typeof opacity==='number'&&Number.isFinite(opacity)?clamp(opacity,.15,1):.65,pinned:typeof saved?.pinned==='boolean'?saved.pinned:true};
+}
 function corner(rect,area,position){
  if(!['top-left','top-right','bottom-left','bottom-right'].includes(position))throw Error('Неизвестное положение окна.');
  const left=position.endsWith('left'),top=position.startsWith('top'),gap=12;

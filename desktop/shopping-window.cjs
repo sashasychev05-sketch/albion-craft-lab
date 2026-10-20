@@ -14,7 +14,7 @@ function createShoppingWindow({BrowserWindow,ipcMain,screen,app,getMain,origin,d
   adjusting=true;const requested={...target};
   try{for(let i=0;i<3;i++){mini.setBounds(requested);const actual=mini.getBounds();if(['x','y','width','height'].every(k=>actual[k]===target[k]))break;for(const key of ['x','y','width','height'])requested[key]-=actual[key]-target[key];}return mini.getBounds();}finally{adjusting=false;}
  }
- function windowState(){return {compact,pinned:mini?.isAlwaysOnTop()??true,opacity:mini?.getOpacity()??1};}
+ function windowState(){return {compact,pinned:mini?.isAlwaysOnTop()??true,backgroundOpacity:settings?.backgroundOpacity??.65};}
  function emit(value,switchServer=false){if(alive(mini)&&value?.server===viewServer)mini.webContents.send('shopping:state',{...value,switchServer,window:windowState()});}
  function ask(action,payload={}){
   const main=getMain();if(!alive(main)||main.webContents.isLoadingMainFrame())return Promise.reject(Error('Основное приложение загружается. Повторите через несколько секунд.'));if(pending.size>=16)return Promise.reject(Error('Дождитесь завершения предыдущего действия.'));
@@ -26,8 +26,8 @@ function createShoppingWindow({BrowserWindow,ipcMain,screen,app,getMain,origin,d
   if(!servers.includes(server))throw Error('Неизвестный сервер.');viewServer=server;
   if(alive(mini)){if(!diagnostic){mini.show();mini.focus();}emit(await ask('state',{server:viewServer}),true);return windowState();}
   settings=read();compact=false;normalBounds={...settings.bounds};
-  mini=new BrowserWindow({...settings.bounds,minWidth:300,minHeight:400,maxWidth:Math.max(...areas().map(a=>a.width)),maxHeight:Math.max(...areas().map(a=>a.height)),frame:false,thickFrame:false,show:false,alwaysOnTop:settings.pinned,skipTaskbar:false,minimizable:false,maximizable:false,fullscreenable:false,title:'Закупки · Albion Craft Lab',backgroundColor:'#18211f',icon:path.join(__dirname,'assets','icon.ico'),webPreferences:{preload:path.join(__dirname,'shopping-preload.cjs'),nodeIntegration:false,contextIsolation:true,sandbox:true,webSecurity:true,backgroundThrottling:false}});
-  mini.setMenu(null);mini.setAlwaysOnTop(settings.pinned,'screen-saver');mini.setOpacity(settings.opacity);normalBounds=place(settings.bounds);
+  mini=new BrowserWindow({...settings.bounds,minWidth:300,minHeight:400,maxWidth:Math.max(...areas().map(a=>a.width)),maxHeight:Math.max(...areas().map(a=>a.height)),frame:false,thickFrame:false,show:false,transparent:true,hasShadow:false,alwaysOnTop:settings.pinned,skipTaskbar:false,minimizable:false,maximizable:false,fullscreenable:false,title:'Закупки · Albion Craft Lab',backgroundColor:'#00000000',icon:path.join(__dirname,'assets','icon.ico'),webPreferences:{preload:path.join(__dirname,'shopping-preload.cjs'),nodeIntegration:false,contextIsolation:true,sandbox:true,webSecurity:true,backgroundThrottling:false}});
+  mini.setMenu(null);mini.setAlwaysOnTop(settings.pinned,'screen-saver');normalBounds=place(settings.bounds);
   mini.webContents.setWindowOpenHandler(()=>({action:'deny'}));mini.webContents.on('will-navigate',(event,url)=>{if(url!==origin+'/shopping-mini.html')event.preventDefault();});mini.webContents.on('will-attach-webview',event=>event.preventDefault());
   const changed=()=>{if(!alive(mini)||adjusting)return;if(!compact)normalBounds=mini.getBounds();else{const rect=mini.getBounds();normalBounds={...normalBounds,x:rect.x,y:rect.y,width:rect.width};}clearTimeout(timer);timer=setTimeout(save,250);};
   mini.on('move',changed);mini.on('resize',changed);mini.on('close',()=>{changed();clearTimeout(timer);save();});
@@ -51,7 +51,7 @@ function createShoppingWindow({BrowserWindow,ipcMain,screen,app,getMain,origin,d
   if(action==='main'){showMain();return windowState();}
   if(action==='state')return {server:viewServer,...windowState()};
   if(action==='pin'){if(typeof payload.value!=='boolean')throw Error('Некорректное закрепление.');mini.setAlwaysOnTop(payload.value,'screen-saver');settings.pinned=payload.value;}
-  else if(action==='opacity'){if(typeof payload.value!=='number'||!Number.isFinite(payload.value)||payload.value<.55||payload.value>1)throw Error('Прозрачность должна быть от 55 до 100%.');mini.setOpacity(payload.value);settings.opacity=payload.value;}
+  else if(action==='opacity'){if(typeof payload.value!=='number'||!Number.isFinite(payload.value)||payload.value<.15||payload.value>1)throw Error('Непрозрачность фона должна быть от 15 до 100%.');settings.backgroundOpacity=payload.value;}
   else if(action==='corner'){const rect=mini.getBounds(),area=screen.getDisplayMatching(rect).workArea;const placed=place(corner(rect,area,payload.value));normalBounds=compact?{...normalBounds,x:placed.x,y:placed.y,width:placed.width}:placed;}
   else if(action==='compact'){
    compact=!compact;

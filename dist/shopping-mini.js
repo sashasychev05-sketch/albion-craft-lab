@@ -3,7 +3,8 @@ const api=window.ShoppingWindow,$=id=>document.getElementById(id),fmt=n=>Number(
 const names={Lymhurst:'Люмхурст',Martlock:'Мартлок',Thetford:'Тетфорд',Bridgewatch:'Бриджвотч','Fort Sterling':'Форт Стерлинг',Caerleon:'Карлион',Brecilien:'Бресилиен','Black Market':'Чёрный рынок'},city=c=>names[c]||c||'Город не указан';
 let state={server:'europe',groups:[],canUndo:false},server='europe',busy=false,sequence=0,page=0,pageCount=1,cityReady=false,editor=null,resizeFrame;
 function message(text,bad=false){$('mini-status').textContent=text;$('mini-status').classList.toggle('error',bad);}
-function windowState(value){if(!value)return;document.body.classList.toggle('compact',!!value.compact);$('mini-pin').setAttribute('aria-pressed',String(!!value.pinned));$('mini-compact').textContent=value.compact?'□':'−';$('mini-compact').title=value.compact?'Развернуть список':'Свернуть в полоску';$('mini-compact').setAttribute('aria-label',$('mini-compact').title);$('mini-opacity').value=Math.round(value.opacity*100);$('mini-opacity-label').textContent=Math.round(value.opacity*100)+'%';}
+function backgroundOpacity(value){document.documentElement.style.setProperty('--mini-background-opacity',String(value));$('mini-opacity').value=Math.round(value*100);$('mini-opacity-label').textContent=Math.round(value*100)+'%';}
+function windowState(value){if(!value)return;document.body.classList.toggle('compact',!!value.compact);$('mini-pin').setAttribute('aria-pressed',String(!!value.pinned));$('mini-compact').textContent=value.compact?'□':'−';$('mini-compact').title=value.compact?'Развернуть список':'Свернуть в полоску';$('mini-compact').setAttribute('aria-label',$('mini-compact').title);backgroundOpacity(value.backgroundOpacity??.65);}
 function render(){
  const selected=$('mini-city').value,available=[...new Set(state.groups.map(g=>g.city))];
  $('mini-city').innerHTML='<option value="all">Все города</option>'+available.map(c=>`<option value="${esc(c)}">${esc(city(c))}</option>`).join('');
@@ -57,7 +58,7 @@ async function control(action,value){try{const next=await api.window({action,val
 $('mini-close').onclick=()=>control('close');$('mini-main').onclick=()=>control('main');$('mini-pin').onclick=()=>control('pin',$('mini-pin').getAttribute('aria-pressed')!=='true');$('mini-compact').onclick=()=>control('compact');
 $('mini-settings').onclick=()=>$('mini-options').showModal();$('mini-options-close').onclick=()=>$('mini-options').close();
 $('mini-corner').onchange=()=>{if($('mini-corner').value)control('corner',$('mini-corner').value);$('mini-corner').value='';};
-$('mini-opacity').oninput=()=>{$('mini-opacity-label').textContent=$('mini-opacity').value+'%';};$('mini-opacity').onchange=()=>control('opacity',Number($('mini-opacity').value)/100);
+$('mini-opacity').oninput=()=>backgroundOpacity(Number($('mini-opacity').value)/100);$('mini-opacity').onchange=()=>control('opacity',Number($('mini-opacity').value)/100);
 new ResizeObserver(()=>{cancelAnimationFrame(resizeFrame);resizeFrame=requestAnimationFrame(render);}).observe($('mini-list'));
 api.window({action:'state'}).then(async value=>{server=value.server;$('mini-server').value=server;windowState(value);await command('state');}).catch(e=>message(e.message,true));
 window.ShoppingMini={snapshot:()=>JSON.parse(JSON.stringify(state)),busy:()=>busy,pagination:()=>({page,pageCount,visible:$('mini-list').querySelectorAll('.mini-row').length})};
