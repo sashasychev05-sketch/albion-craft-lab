@@ -1,0 +1,30 @@
+(function(root){'use strict';
+const worlds={'avalon':'Дороги Авалона','avalon-hideout':'Авалон · убежища',outlands:'Чёрные земли',royal:'Королевский континент',yellow:'Жёлтые зоны',red:'Красные зоны',city:'Города'};
+const resources={WOOD:'Дерево',HIDE:'Шкуры',ROCK:'Камень',FIBER:'Волокно',ORE:'Руда'};
+const chests={SOLO:'Зелёные сундуки',BIG_SOLO:'Большие зелёные',GROUP:'Синие сундуки',AVALONIAN:'Золотые сундуки',BIG_AVALONIAN:'Большие золотые'};
+const normalize=s=>String(s??'').toLowerCase().normalize('NFKC').replace(/[—–]/g,'-').replace(/[^a-zа-яё0-9-]/g,'');
+function catalog(raw){
+ if(!raw||!Array.isArray(raw.zones)||!raw.zones.length||raw.zones.length>3000)throw Error('В папке нет корректного справочника зон.');
+ const ids=new Set();return raw.zones.map(z=>{
+  if(!z||typeof z.name!=='string'||!z.name.trim()||z.name.length>100||typeof z._id!=='string'||z._id.length>100||ids.has(z._id)||!Object.hasOwn(worlds,z.world)||!Number.isInteger(z.tier)||z.tier<1||z.tier>8)throw Error('Повреждены данные зоны.');ids.add(z._id);
+  const image=z.image||'';if(typeof image!=='string'||image&&!/^[a-z0-9_-]+\.(webp|png)$/i.test(image))throw Error('Недопустимое имя карты.');
+  function counts(key){if(z[key]!==undefined&&!Array.isArray(z[key]))throw Error('Повреждены объекты карты.');return (z[key]||[]).map(x=>{if(!x||typeof x.type!=='string'||x.type.length>60||!Number.isInteger(x.count)||x.count<0||x.count>500)throw Error('Повреждены объекты карты.');return {type:x.type,count:x.count};});}
+  const res=(z.resources||[]).map(x=>{if(!Object.hasOwn(resources,x?.type)||!Number.isInteger(x.max_tier)||x.max_tier<1||x.max_tier>8)throw Error('Повреждены ресурсы.');return {type:x.type,max_tier:x.max_tier,premium:x.premium===true};});
+  return {id:z._id,name:z.name,tier:z.tier,world:z.world,image,resources:res,chests:counts('chests'),dungeons:counts('dungeons'),key:normalize(z.name)};
+ });
+}
+function distance(a,b){let previous=Array.from({length:b.length+1},(_,i)=>i);for(let i=0;i<a.length;i++){const next=[i+1];for(let j=0;j<b.length;j++)next.push(Math.min(next[j]+1,previous[j+1]+1,previous[j]+(a[i]===b[j]?0:1)));previous=next;}return previous[b.length];}
+function search(zones,{query='',world='roads',tier='',resource='',chest='',favorites=null}={}){
+ const q=normalize(query);return zones.filter(z=>(world==='all'||world==='roads'&&z.world.startsWith('avalon')||z.world===world)&&(!tier||z.tier===Number(tier))&&(!resource||z.resources.some(r=>r.type===resource))&&(!chest||z.chests.some(c=>c.type===chest&&c.count>0))&&(!favorites||favorites.includes(z.id))).map(z=>{
+  const key=z.key||normalize(z.name),score=!q?0:key===q?100:key.startsWith(q)?95:key.includes(q)?90:q.length<4?0:Math.round(100*(1-distance(key,q)/Math.max(key.length,q.length)));
+  return {...z,score};
+ }).filter(z=>!q||z.score>=60).sort((a,b)=>b.score-a.score||a.name.localeCompare(b.name));
+}
+function recognize(zones,text){const lines=String(text||'').split(/[\n\r]/).map(s=>s.trim()).filter(s=>s.length>=4&&s.length<=100);return zones.map(z=>({zone:z,score:Math.max(0,...lines.map(s=>{const q=normalize(s),key=z.key;if(q===key||q.includes(key))return 100;return Math.round(100*(1-distance(q,key)/Math.max(q.length,key.length)));}))})).filter(r=>r.score>=65).sort((a,b)=>b.score-a.score).slice(0,5);}
+const KEY='albion-avalon-v1';
+function storage(io){let data={version:1,favorites:[],notes:{},timers:[]};const raw=io.getItem(KEY);if(raw)try{data=JSON.parse(raw);if(!data||data.version!==1||!Array.isArray(data.favorites)||data.favorites.length>100||data.favorites.some(id=>typeof id!=='string'||id.length>100)||!data.notes||typeof data.notes!=='object'||Array.isArray(data.notes)||Object.entries(data.notes).some(([id,n])=>['__proto__','constructor','prototype'].includes(id)||id.length>100||typeof n!=='string'||n.length>2000)||!Array.isArray(data.timers)||data.timers.length>100||data.timers.some(t=>!t||!['europe','west','east'].includes(t.server)||typeof t.id!=='string'||typeof t.from!=='string'||typeof t.to!=='string'||!Number.isSafeInteger(t.expires)||t.expires<0||t.expires>8640000000000000))throw Error();}catch{throw Error('Настройки Авалона повреждены. Исходные данные сохранены без изменений.');}
+ const clone=x=>JSON.parse(JSON.stringify(x));function commit(next){try{io.setItem(KEY,JSON.stringify(next));}catch{throw Error('Не удалось сохранить Авалон. Проверьте свободное место.');}data=next;}
+ return {snapshot:()=>clone(data),favorite(id){if(typeof id!=='string'||!id||id.length>100)throw Error('Неизвестная зона.');const next=clone(data);if(next.favorites.includes(id))next.favorites=next.favorites.filter(x=>x!==id);else{if(next.favorites.length>=100)throw Error('Можно сохранить 100 избранных зон.');next.favorites.push(id);}commit(next);},note(id,value){if(typeof id!=='string'||!id||id.length>100||['__proto__','constructor','prototype'].includes(id)||typeof value!=='string'||value.length>2000)throw Error('Проверьте заметку.');const next=clone(data);if(value)next.notes[id]=value;else delete next.notes[id];commit(next);},timer({server,from,to,minutes},now=Date.now()){if(!['europe','west','east'].includes(server)||![from,to].every(s=>typeof s==='string'&&s.length>0&&s.length<=100)||from===to||!Number.isInteger(minutes)||minutes<1||minutes>1440||!Number.isSafeInteger(now)||now<0)throw Error('Укажите разные зоны и время от 1 до 1440 минут.');const next=clone(data);if(next.timers.length>=100)throw Error('Можно хранить 100 порталов. Удалите старые.');next.timers.push({id:root.crypto?.randomUUID?.()||String(now)+Math.random(),server,from,to,expires:now+minutes*60000});commit(next);},remove(id){const next=clone(data);next.timers=next.timers.filter(t=>t.id!==id);commit(next);}};
+}
+const api={worlds,resources,chests,normalize,catalog,search,recognize,storage,KEY};root.AvalonMath=api;if(typeof module!=='undefined')module.exports=api;
+})(typeof window!=='undefined'?window:globalThis);

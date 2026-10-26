@@ -10,6 +10,7 @@ add('island-group','Остров');add('island','Доходность остро
 add('trade','Торговля');for(const [id,label]of [['luxury','Перевозка роскоши'],['shipping','План перевозок'],['deals','Расчёт сделок']])add(id,label,'trade',id);
 add('buy-orders','Закупочные ордера','trade','shipping',null,'buy-order-planner');
 add('batches','Партии','trade','shipping',null,'batch-cards-panel');
+add('exploration','Исследование мира');add('avalon','Avalon Checker','exploration','avalon');
 add('account','Мой кабинет');for(const [id,label]of [['character','Мастерства и персонажи'],['training','Прокачка'],['prices','Мои цены'],['history','История']])add(id,label,'account',id);
 function path(id){const result=[];for(let n=byId.get(id);n;n=byId.get(n.parent))result.unshift(n);return result;}
 const section=id=>{const n=byId.get(id);return n?.mode?{type:'section',id:n.id,mode:n.mode,...(n.filter?{filter:n.filter}:{}),...(n.anchor?{anchor:n.anchor}:{})}:null;};

@@ -4,11 +4,11 @@ const fs = require('node:fs');
 const path = require('node:path');
 const assert = require('node:assert/strict');
 const { once } = require('node:events');
-async function run(window, updates, folder, shopping, offlineAttempts = []) {
+async function run(window, updates, folder, shopping, offlineAttempts = [], avalon) {
   window.webContents.setBackgroundThrottling(false);
   const timeout = setTimeout(() => { console.error('Diagnostics timed out'); require('electron').app.exit(1); }, 1500000);
   const errors = [];
-  window.webContents.on('console-message', event => { if (event.level === 'error') { errors.push(event.message); fs.writeFileSync(path.resolve(folder, 'renderer-errors.json'), JSON.stringify(errors)); } });
+  window.webContents.on('console-message', event => { if (event.level === 'error') { errors.push(event.message); if(process.argv.includes('--avalon-only'))console.log('Renderer error '+event.sourceId+':'+event.lineNumber+' '+event.message); fs.writeFileSync(path.resolve(folder, 'renderer-errors.json'), JSON.stringify(errors)); } });
   await once(window.webContents, 'did-finish-load');
   const result = await window.webContents.executeJavaScript(`(() => {
     const snapshot = CraftApp.snapshot();
@@ -23,7 +23,14 @@ async function run(window, updates, folder, shopping, offlineAttempts = []) {
   assert.equal(result.desktopBridge, true);
   assert.equal(result.actionsInitiallyCollapsed, true);
   assert.equal(result.noDefaultProfitGoal, true);
-  assert.equal(result.modes.length, 17, JSON.stringify(errors));
+  assert.equal(result.modes.length, 18, JSON.stringify(errors));
+  if (process.argv.includes('--avalon-only')) {
+    result.avalon = await require('./avalon-diagnostics.cjs').run(window, folder, avalon);
+    result.errors = errors.filter(message => !/Failed to load resource.*(net::|status of)/.test(message));
+    assert.deepEqual(result.errors, []);
+    fs.writeFileSync(path.resolve(folder, 'diagnostics.json'), JSON.stringify(result, null, 2));
+    console.log('Avalon checks completed');clearTimeout(timeout);return;
+  }
   if (process.argv.includes('--offline-assets-only')) {
     result.offlineAssets = await require('./offline-assets-diagnostics.cjs').run(window, folder);
     result.offlineNetwork = { blocked: offlineAttempts.length, artworkRequests: offlineAttempts.filter(url => /render\.albiononline\.com/.test(url)).length };

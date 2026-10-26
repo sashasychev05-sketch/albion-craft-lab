@@ -31,10 +31,12 @@
     "files": [
       "dist/**/*",
       "desktop/**/*.cjs",
+      "desktop/avalon-ocr.ps1",
       "desktop/assets/icon.ico",
       "package.json"
     ],
     "asar": true,
+    "asarUnpack": ["desktop/avalon-ocr.ps1"],
     "publish": [
       {
         "provider": "github",

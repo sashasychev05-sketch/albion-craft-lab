@@ -6,5 +6,6 @@ node_modules/
 .DS_Store
 release/
 work/
+outputs/
 *.exe
 *.blockmap

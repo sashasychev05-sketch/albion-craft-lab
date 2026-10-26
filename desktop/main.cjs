@@ -1,5 +1,5 @@
 'use strict';
-const { app, BrowserWindow, Menu, ipcMain, protocol, net, session, shell, dialog, screen } = require('electron');
+const { app, BrowserWindow, Menu, ipcMain, protocol, net, session, shell, dialog, screen, desktopCapturer, globalShortcut } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
 const { pathToFileURL } = require('node:url');
@@ -18,6 +18,7 @@ protocol.registerSchemesAsPrivileged([{ scheme: 'albion', privileges: { standard
 let window;
 let updates;
 let shopping;
+let avalon;
 const offlineAttempts = [];
 const csp = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://europe.albion-online-data.com https://west.albion-online-data.com https://east.albion-online-data.com https://api.albionfreemarket.com; object-src 'none'; base-uri 'none'; frame-src 'none'";
 function external(url) {
@@ -44,7 +45,7 @@ function createWindow() {
   window.on('closed', () => { window = null; });
   window.once('ready-to-show', () => { if (!diagnosticFolder) window.show(); });
   window.loadURL(`${ORIGIN}/index.html`);
-  if (diagnosticFolder) require('./diagnostics.cjs').run(window, updates, diagnosticFolder, shopping, offlineAttempts).then(() => app.exit(0)).catch(async error => { console.error(error);try{fs.writeFileSync(path.resolve(diagnosticFolder,'failure.png'),(await window.webContents.capturePage()).toPNG());fs.writeFileSync(path.resolve(diagnosticFolder,'failure-state.json'),JSON.stringify(await window.webContents.executeJavaScript("({workspace:window.Workspace?.snapshot(),notice:document.getElementById('workspace-status')?.textContent,mode:document.querySelector('button.nav.active')?.dataset.mode})"),null,2));}catch{}app.exit(1); });
+  if (diagnosticFolder) require('./diagnostics.cjs').run(window, updates, diagnosticFolder, shopping, offlineAttempts, avalon).then(() => app.exit(0)).catch(async error => { console.error(error);try{fs.writeFileSync(path.resolve(diagnosticFolder,'failure.png'),(await window.webContents.capturePage()).toPNG());fs.writeFileSync(path.resolve(diagnosticFolder,'failure-state.json'),JSON.stringify(await window.webContents.executeJavaScript("({workspace:window.Workspace?.snapshot(),notice:document.getElementById('workspace-status')?.textContent,mode:document.querySelector('button.nav.active')?.dataset.mode})"),null,2));}catch{}app.exit(1); });
 }
 if (!app.requestSingleInstanceLock()) app.quit();
 else {
@@ -54,6 +55,7 @@ else {
     protocol.handle('albion', async request => {
       try {
         const url = new URL(request.url);
+        if(url.hostname==='app'&&url.pathname.startsWith('/avalon-local/'))return avalon.image(decodeURIComponent(url.pathname.slice('/avalon-local/'.length)));
         const filename = path.resolve(root, '.' + decodeURIComponent(url.pathname));
         if (url.hostname !== 'app' || !filename.startsWith(root + path.sep)) return new Response('Forbidden', { status: 403 });
         const response = await net.fetch(pathToFileURL(filename).href);
@@ -75,6 +77,7 @@ else {
       { label: 'Вид', submenu: [{ label: 'Увеличить', role: 'zoomIn' }, { label: 'Уменьшить', role: 'zoomOut' }, { label: 'Исходный масштаб', role: 'resetZoom' }, { label: 'На весь экран', role: 'togglefullscreen' }] }
     ]));
     shopping = require('./shopping-window.cjs').createShoppingWindow({ BrowserWindow, ipcMain, screen, app, getMain: () => window, origin: ORIGIN, diagnostic: !!diagnosticFolder });
+    avalon = require('./avalon-controller.cjs').createAvalon({app,ipcMain,dialog,BrowserWindow,screen,desktopCapturer,globalShortcut,net,getMain:()=>window,origin:ORIGIN,diagnostic:!!diagnosticFolder});
     createWindow();
   }).catch(error => { console.error(error); if (!diagnosticFolder) dialog.showErrorBox('Albion Craft Lab', 'Не удалось запустить приложение: ' + error.message); app.exit(1); });
   app.on('window-all-closed', () => app.quit());
