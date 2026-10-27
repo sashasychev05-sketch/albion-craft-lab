@@ -1,6 +1,6 @@
-# Albion Craft Lab
+# Albion Lab
 
-В GitHub опубликован [проверочный выпуск 1.8.1-avalon.1](https://github.com/sashasychev05-sketch/albion-craft-lab/releases/tag/v1.8.1-avalon.1): встроенный Avalon Checker, граф переходов, карты и содержимое узлов. Проверены 3–5 выходов из одной зоны. [Инструкция](docs/AVALON-CHECKER.md) · [Результаты проверок](docs/RELEASE-1.8.1-AVALON-CHECKS.md). Стабильная версия — 1.8.0.
+Albion Lab объединяет крафт, торговлю, перевозки и дороги Авалона. [Проверочный выпуск 1.8.1-avalon.2](https://github.com/sashasychev05-sketch/albion-craft-lab/releases/tag/v1.8.1-avalon.2) включает внутренний движок Avalon Checker и цветные обводки тиров. [Инструкция](docs/AVALON-CHECKER.md). Стабильная версия — 1.8.0.
 
 Версия 1.8.0: [мини-окно закупок поверх игры, локальные иконки, общие закупки и смешанные рейсы](docs/releases/1.8.0.md). [Как пользоваться мини-окном и расчётами без интернета](docs/SHOPPING-MINI-OFFLINE.md).
 

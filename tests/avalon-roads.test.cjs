@@ -1,7 +1,11 @@
 'use strict';
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs/promises'),path=require('node:path'),os=require('node:os'),{EventEmitter}=require('node:events');
-const R=require('../dist/avalon-roads.js'),{createRoads}=require('../desktop/avalon-roads.cjs'),{createOriginal}=require('../desktop/avalon-original.cjs');
+const R=require('../dist/avalon-roads.js'),{createRoads}=require('../desktop/avalon-roads.cjs');
 const M=require('../dist/avalon-model.js');
+test('External exit squares use zone danger colours, independent tier borders and tier-quality labels',()=>{
+ for(const [color,kind]of [['black','black'],['blue','blue'],['yellow','yellow'],['red','red'],['city-black','black'],['city','blue']]){const badge=R.exitBadge({world:'outlands',color,tier:5,quality:6});assert.equal(badge.kind,kind);assert.equal(badge.label,'5-6');assert.equal(badge.border,'#d94a4a');}
+ for(const [tier,color]of [[1,'#4d91e8'],[2,'#4d91e8'],[3,'#4d91e8'],[4,'#4d91e8'],[5,'#d94a4a'],[6,'#ed963a'],[7,'#e1c342'],[8,'#ffffff']])assert.equal(R.tierColor(tier),color);assert.equal(R.exitBadge({world:'avalon',tier:6,quality:3}),null);assert.equal(R.exitBadge({world:'royal',color:'blue',tier:3,quality:null}).label,'3');
+});
 const zones=[{id:'a',name:'A',color:'road'},{id:'b',name:'B',color:'road'},{id:'c',name:'City',color:'blue'},{id:'p',name:'Portal',color:'city-black',zoneType:'PLAYERCITY_BLACK_PORTALCITY_NOFURNITURE'}],library={read:async()=>({zones})};
 function stamp(now){const d=new Date(now);return [d.getHours(),d.getMinutes(),d.getSeconds()].map(n=>String(n).padStart(2,'0')).join(':');}
 function line(now,from='A',to='B',timer='1ч 02м, conf=0.98'){return `${stamp(now)} [INFO   ] roads: ${from} → ${to} (${timer}) — отправлено\n`;}
@@ -59,11 +63,4 @@ test('Recorder handles a new log after starting and preserves corrupt persisted 
 }));
 test('Concurrent session starts cannot reassign a recording to another server',async()=>temporary(async root=>{
  const recorder=createRoads({userData:root,library});try{const result=await Promise.allSettled([recorder.start('europe',path.join(root,'AlbionAvalonChecker.exe')),recorder.start('west',path.join(root,'AlbionAvalonChecker.exe'))]);assert.equal(result.filter(r=>r.status==='fulfilled').length,1);assert.equal((await recorder.state()).session.server,'europe');}finally{recorder.stop();}
-}));
-test('Full Checker manager validates the complete runtime, avoids duplicates and preserves external ownership',async()=>temporary(async root=>{
- const exe=path.join(root,'AlbionAvalonChecker.exe');await fs.writeFile(exe,Buffer.concat([Buffer.from('MZ'),Buffer.alloc(1200)]));for(const f of ['python312.dll','data/avalon_zones.json','data/timer_ctc.onnx','data/timer_templates.npz']){const dest=path.join(root,'_internal',f);await fs.mkdir(path.dirname(dest),{recursive:true});await fs.writeFile(dest,'fixture');}
- const realExe=await fs.realpath(exe);let processes=[],spawnCount=0,focusCount=0,child;
- const manager=createOriginal({userData:path.join(root,'profile'),downloads:root,probe:async()=>processes,focus:async()=>{focusCount++;},spawnProcess:(file,args,options)=>{assert.equal(file,realExe);assert.equal(options.shell,false);assert.equal(options.windowsHide,true);assert.deepEqual(args,[]);spawnCount++;child=new EventEmitter();child.pid=123;child.unref=()=>{};child.kill=()=>{setImmediate(()=>child.emit('exit',0));return true;};setImmediate(()=>child.emit('spawn'));return child;}});
- await manager.connect(exe);await manager.start();assert.equal((await manager.status()).owned,true);await manager.start();assert.equal(spawnCount,1);assert.equal(focusCount,1);await manager.stop();processes=[{pid:456}];await manager.start();assert.equal((await manager.status(true)).owned,false);assert.equal(focusCount,2);await assert.rejects(manager.stop(),/отдельно/);assert.equal(spawnCount,1);
- await fs.unlink(path.join(root,'_internal/data/timer_ctc.onnx'));assert.equal((await manager.status(true)).available,false);
 }));

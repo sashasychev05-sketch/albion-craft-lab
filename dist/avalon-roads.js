@@ -2,6 +2,13 @@
 const servers=['europe','west','east'];
 const key=(a,b)=>[a,b].sort().join('\0');
 function classify(z){if(z?.color==='blue'||z?.color==='yellow'||z?.color==='city')return 'safe';if(z?.zoneType?.includes('PORTALCITY'))return 'portal';return 'other';}
+const tierColor=tier=>({5:'#d94a4a',6:'#ed963a',7:'#e1c342',8:'#ffffff'}[tier]||'#4d91e8');
+function exitBadge(z){
+ if(!z||z.world?.startsWith('avalon'))return null;
+ const kind=({black:'black','city-black':'black',blue:'blue',city:'blue',yellow:'yellow',red:'red'}[z.color])||({outlands:'black',royal:'blue',yellow:'yellow',red:'red'}[z.world])||'unknown';
+ const fill={black:'#15191f',blue:'#2768ad',yellow:'#d8b72e',red:'#a93839',unknown:'#657084'}[kind];
+ return {kind,fill,ink:kind==='yellow'?'#1d252a':'#ffffff',label:String(z.tier)+(z.quality==null?'':'-'+z.quality),border:tierColor(z.tier)};
+}
 // The log has local time only. Accept new records near the observation time,
 // including midnight, never interpret an old log as a fresh scan.
 function parse(line,received=Date.now()){
@@ -28,5 +35,5 @@ function route(edges,start,targets,{now=Date.now(),reserve=0,mode='shortest'}={}
   for(const next of adj.get(node)||[]){if(done.has(next.node))continue;const candidate={expires:Math.min(best.get(node).expires,next.edge.expires),hops:best.get(node).hops+1},old=best.get(next.node),better=!old||(mode==='lifetime'?candidate.expires>old.expires||candidate.expires===old.expires&&candidate.hops<old.hops:candidate.hops<old.hops||candidate.hops===old.hops&&candidate.expires>old.expires);if(better){best.set(next.node,candidate);previous.set(next.node,{node,edge:next.edge});open.push(next.node);}}
  }return null;
 }
-const api={servers,key,parse,merge,usable,route,classify,edgeGeometry};root.AvalonRoads=api;if(typeof module!=='undefined')module.exports=api;
+const api={servers,key,parse,merge,usable,route,classify,edgeGeometry,tierColor,exitBadge};root.AvalonRoads=api;if(typeof module!=='undefined')module.exports=api;
 })(typeof window!=='undefined'?window:globalThis);

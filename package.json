@@ -1,8 +1,8 @@
 {
   "name": "albion-craft-lab",
-  "version": "1.8.1-avalon.1",
+  "version": "1.8.1-avalon.2",
   "description": "Калькулятор крафта и перевозок Albion Online",
-  "author": "Albion Craft Lab",
+  "author": "Albion Lab",
   "main": "desktop/main.cjs",
   "repository": {
     "type": "git",
@@ -23,7 +23,7 @@
   },
   "build": {
     "appId": "com.albioncraftlab.desktop",
-    "productName": "Albion Craft Lab",
+    "productName": "Albion Lab",
     "directories": {
       "output": "release",
       "buildResources": "desktop/assets"
@@ -32,14 +32,16 @@
       "dist/**/*",
       "desktop/**/*.cjs",
       "desktop/avalon-ocr.ps1",
-      "desktop/avalon-original-window.ps1",
       "desktop/assets/icon.ico",
-      "package.json"
+      "package.json",
+      "desktop/avalon-python-host.ps1",
+      "desktop/avalon-worker.py"
     ],
     "asar": true,
     "asarUnpack": [
       "desktop/avalon-ocr.ps1",
-      "desktop/avalon-original-window.ps1"
+      "desktop/avalon-python-host.ps1",
+      "desktop/avalon-worker.py"
     ],
     "publish": [
       {
@@ -54,7 +56,7 @@
         "nsis"
       ],
       "icon": "desktop/assets/icon.ico",
-      "artifactName": "Albion-Craft-Lab-Setup-${version}-${arch}.${ext}"
+      "artifactName": "Albion-Lab-Setup-${version}-${arch}.${ext}"
     },
     "nsis": {
       "oneClick": false,
@@ -62,7 +64,7 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Albion Craft Lab",
+      "shortcutName": "Albion Lab",
       "deleteAppDataOnUninstall": false,
       "installerLanguages": [
         "ru_RU",

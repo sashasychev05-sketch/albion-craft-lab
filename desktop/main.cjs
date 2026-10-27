@@ -12,8 +12,7 @@ if (diagnosticFolder) {
   fs.mkdirSync(path.resolve(diagnosticFolder, 'profile'), { recursive: true });
   app.setPath('userData', path.resolve(diagnosticFolder, 'profile'));
 }
-app.setName('Albion Craft Lab');
-app.setAppUserModelId('com.albioncraftlab.desktop');
+require('./app-identity.cjs').configureIdentity(app);
 protocol.registerSchemesAsPrivileged([{ scheme: 'albion', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true } }]);
 let window;
 let updates;
@@ -34,7 +33,7 @@ function senderAllowed(event) {
 function createWindow() {
   window = new BrowserWindow({
     width: 1440, height: 960, minWidth: 760, minHeight: 600,
-    title: 'Albion Craft Lab', backgroundColor: '#171d1c', show: false,
+    title: 'Albion Lab', backgroundColor: '#171d1c', show: false,
     icon: path.join(__dirname, 'assets', 'icon.ico'),
     webPreferences: { preload: path.join(__dirname, 'preload.cjs'), nodeIntegration: false, contextIsolation: true, sandbox: true, webSecurity: true }
   });
@@ -79,6 +78,6 @@ else {
     shopping = require('./shopping-window.cjs').createShoppingWindow({ BrowserWindow, ipcMain, screen, app, getMain: () => window, origin: ORIGIN, diagnostic: !!diagnosticFolder });
     avalon = require('./avalon-controller.cjs').createAvalon({app,ipcMain,dialog,BrowserWindow,screen,desktopCapturer,globalShortcut,net,getMain:()=>window,origin:ORIGIN,diagnostic:!!diagnosticFolder});
     createWindow();
-  }).catch(error => { console.error(error); if (!diagnosticFolder) dialog.showErrorBox('Albion Craft Lab', 'Не удалось запустить приложение: ' + error.message); app.exit(1); });
+  }).catch(error => { console.error(error); if (!diagnosticFolder) dialog.showErrorBox('Albion Lab', 'Не удалось запустить приложение: ' + error.message); app.exit(1); });
   app.on('window-all-closed', () => app.quit());
 }

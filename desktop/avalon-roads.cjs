@@ -14,7 +14,7 @@ function createRoads({userData,library,now=Date.now,onChanged=()=>{}}){
  async function accept(records,server){return serial(async()=>{await load();const catalog=await library.read(),names=new Map(catalog.zones.map(z=>[z.name,z.id]));let next={...data,edges:[...data.edges]},added=0;
   for(const r of records){const from=names.get(r.fromName),to=names.get(r.toName);if(!from||!to||from===to){lastError='Название одной из зон не найдено в справочнике. Проверьте распознавание в Checker.';continue;}
    const previous=next.edges.find(e=>e.server===server&&R.key(e.from,e.to)===R.key(from,to));if(previous&&previous.captured>=r.captured)continue;
-   next.edges=next.edges.filter(e=>!(e.server===server&&R.key(e.from,e.to)===R.key(from,to)));next.edges.push({id:randomUUID(),server,from,to,captured:r.captured,observed:now(),expires:r.expires,source:'checker'});added++;
+   next.edges=next.edges.filter(e=>!(e.server===server&&R.key(e.from,e.to)===R.key(from,to)));next.edges.push({id:randomUUID(),server,from,to,captured:r.captured,observed:now(),expires:r.expires,source:r.source==='engine'?'engine':'checker'});added++;
   }if(!added)return 0;
   // Keep current records first; old expired observations are expendable at the cap.
   next.edges.sort((a,b)=>b.captured-a.captured);next.edges=next.edges.slice(0,5000);await save(next);return added;
@@ -30,6 +30,7 @@ function createRoads({userData,library,now=Date.now,onChanged=()=>{}}){
  function stop(){epoch++;if(timer)clearInterval(timer);timer=null;session=null;onChanged();}
  async function remove(id){return serial(async()=>{await load();await save({...data,edges:data.edges.filter(e=>e.id!==id)});});}
  async function mark(server,id,city){if(!R.servers.includes(server)||typeof id!=='string'||typeof city!=='string')throw Error('Проверьте зону и город.');const zones=(await library.read()).zones;if(!zones.some(z=>z.id===id)||city&&!zones.some(z=>z.id===city&&R.classify(z)==='portal'))throw Error('Выберите зону и предпортальный город из справочника.');return serial(async()=>{await load();const marks={...data.marks},key=server+':'+id;if(city)marks[key]=city;else delete marks[key];await save({...data,marks});});}
- return {state,start,stop,poll,remove,mark};
+ async function observe({server,from,to,captured,seconds}){if(!R.servers.includes(server)||![from,to].every(s=>typeof s==='string'&&s.length>0&&s.length<=100)||from===to||!Number.isSafeInteger(captured)||captured<0||captured>now()+5000||seconds!==null&&(!Number.isInteger(seconds)||seconds<0||seconds>86400))throw Error('Проверьте распознанные зоны и время портала.');const added=await accept([{fromName:from,toName:to,captured,expires:seconds===null?null:captured+seconds*1000,source:'engine'}],server);onChanged();return added;}
+ return {state,start,stop,poll,remove,mark,observe};
 }
 module.exports={createRoads};

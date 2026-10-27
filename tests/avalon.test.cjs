@@ -9,6 +9,9 @@ test('Avalon catalog rejects invalid counts, resource tiers, duplicate IDs and m
 test('Search combines actual world/tier/resource/chest filters, name fragments and fuzzy OCR names',()=>{
  const zones=M.catalog({zones:[raw(),{...raw('Test City','0000'),world:'city',image:'',tier:1}]});assert.equal(M.search(zones).length,1);assert.equal(M.search(zones,{world:'all'}).length,2);assert.equal(M.search(zones,{query:'COUES EXAKROM',resource:'WOOD',chest:'SOLO',tier:4})[0].id,'TNL-002');assert.equal(M.search(zones,{resource:'ORE'}).length,0);assert.equal(M.search(zones,{query:'Coues-Exakrorn'})[0].id,'TNL-002');assert.equal(M.recognize(zones,'Road to Coues-Exakrom\n00:12')[0].score,100);assert.equal(M.recognize(zones,'not a map at all').length,0);
 });
+test('Zone quality is preserved for exit labels without inventing absent quality',()=>{
+ const zones=M.catalog({zones:[{...raw(),tier:5,quality:6}]});assert.equal(zones[0].quality,6);assert.equal(M.zoneLabel(zones[0]),'5-6');assert.equal(M.zoneLabel(M.catalog({zones:[raw()]})[0]),'4');for(const quality of [0,7,1.2,'6'])assert.throws(()=>M.catalog({zones:[{...raw(),quality}]}));
+});
 test('Favorites and notes persist; portal expiry is absolute and timers stay isolated by server',()=>{
  const {io,store}=setup();store.favorite('TNL-002');store.note('TNL-002','Проверить проход');store.timer({server:'west',from:'TNL-002',to:'TNL-003',minutes:90},1000);const next=M.storage(io).snapshot();assert.deepEqual(next.favorites,['TNL-002']);assert.equal(next.notes['TNL-002'],'Проверить проход');assert.deepEqual([next.timers[0].server,next.timers[0].expires],['west',5401000]);store.remove(next.timers[0].id);assert.equal(store.snapshot().timers.length,0);store.favorite('TNL-002');assert.deepEqual(store.snapshot().favorites,[]);
 });
