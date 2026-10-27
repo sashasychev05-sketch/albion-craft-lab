@@ -14,6 +14,11 @@ function parse(line,received=Date.now()){
 }
 function merge(edges){const result=new Map();for(const edge of edges){const k=key(edge.from,edge.to),old=result.get(k),at=edge.observed??edge.captured,previous=old&&(old.observed??old.captured);if(!old||at>previous||at===previous&&edge.expires!==null)result.set(k,edge);}return [...result.values()];}
 function usable(edges,now,reserve=0){return merge(edges).filter(e=>Number.isFinite(e.expires)&&e.expires>now+reserve);}
+function edgeGeometry(a,b){
+ if(a.x===b.x){const x=a.x+93,c=x+90;return {path:`M ${x} ${a.y} C ${c} ${a.y} ${c} ${b.y} ${x} ${b.y}`,labelX:x+70,labelY:(a.y+b.y)/2-8,minX:x,maxX:c};}
+ const direction=Math.sign(b.x-a.x),start=a.x+93*direction,end=b.x-93*direction,middle=(start+end)/2;
+ return {path:`M ${start} ${a.y} C ${middle} ${a.y} ${middle} ${b.y} ${end} ${b.y}`,labelX:middle,labelY:(a.y+b.y)/2-8,minX:Math.min(start,end),maxX:Math.max(start,end)};
+}
 // Widest path maximises the earliest closing portal; BFS minimises transitions.
 function route(edges,start,targets,{now=Date.now(),reserve=0,mode='shortest'}={}){
  const goals=new Set(targets),adj=new Map();for(const e of usable(edges,now,reserve)){for(const [a,b]of [[e.from,e.to],[e.to,e.from]]){if(!adj.has(a))adj.set(a,[]);adj.get(a).push({node:b,edge:e});}}
@@ -23,5 +28,5 @@ function route(edges,start,targets,{now=Date.now(),reserve=0,mode='shortest'}={}
   for(const next of adj.get(node)||[]){if(done.has(next.node))continue;const candidate={expires:Math.min(best.get(node).expires,next.edge.expires),hops:best.get(node).hops+1},old=best.get(next.node),better=!old||(mode==='lifetime'?candidate.expires>old.expires||candidate.expires===old.expires&&candidate.hops<old.hops:candidate.hops<old.hops||candidate.hops===old.hops&&candidate.expires>old.expires);if(better){best.set(next.node,candidate);previous.set(next.node,{node,edge:next.edge});open.push(next.node);}}
  }return null;
 }
-const api={servers,key,parse,merge,usable,route,classify};root.AvalonRoads=api;if(typeof module!=='undefined')module.exports=api;
+const api={servers,key,parse,merge,usable,route,classify,edgeGeometry};root.AvalonRoads=api;if(typeof module!=='undefined')module.exports=api;
 })(typeof window!=='undefined'?window:globalThis);

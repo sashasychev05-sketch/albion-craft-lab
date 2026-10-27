@@ -34,12 +34,14 @@ jobs:
           $tag = "v$version"
           gh release view $tag --repo $env:GITHUB_REPOSITORY 2>$null
           if ($LASTEXITCODE -ne 0) {
-            gh release create $tag --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --title "Albion Craft Lab $version" --draft --notes-file "docs/releases/$version.md"
+            $releaseFlags = @()
+            if ($version.Contains('-')) { $releaseFlags += '--prerelease' }
+            gh release create $tag --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --title "Albion Craft Lab $version" --draft --notes-file "docs/releases/$version.md" @releaseFlags
             if ($LASTEXITCODE -ne 0) { throw 'Cannot create draft release' }
           }
           $release = gh release view $tag --repo $env:GITHUB_REPOSITORY --json isDraft | ConvertFrom-Json
           if (-not $release.isDraft) { throw 'Refusing to overwrite a published release' }
-          gh release upload $tag release/*.exe release/*.blockmap release/latest.yml --repo $env:GITHUB_REPOSITORY
+          gh release upload $tag release/*.exe release/*.blockmap release/*.yml --repo $env:GITHUB_REPOSITORY
           if ($LASTEXITCODE -ne 0) { throw 'Cannot upload release files' }
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

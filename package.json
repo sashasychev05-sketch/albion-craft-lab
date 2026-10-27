@@ -1,6 +1,6 @@
 {
   "name": "albion-craft-lab",
-  "version": "1.8.0",
+  "version": "1.8.1-avalon.1",
   "description": "Калькулятор крафта и перевозок Albion Online",
   "author": "Albion Craft Lab",
   "main": "desktop/main.cjs",
@@ -37,7 +37,10 @@
       "package.json"
     ],
     "asar": true,
-    "asarUnpack": ["desktop/avalon-ocr.ps1", "desktop/avalon-original-window.ps1"],
+    "asarUnpack": [
+      "desktop/avalon-ocr.ps1",
+      "desktop/avalon-original-window.ps1"
+    ],
     "publish": [
       {
         "provider": "github",
