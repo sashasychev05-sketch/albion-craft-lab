@@ -32,11 +32,12 @@
       "dist/**/*",
       "desktop/**/*.cjs",
       "desktop/avalon-ocr.ps1",
+      "desktop/avalon-original-window.ps1",
       "desktop/assets/icon.ico",
       "package.json"
     ],
     "asar": true,
-    "asarUnpack": ["desktop/avalon-ocr.ps1"],
+    "asarUnpack": ["desktop/avalon-ocr.ps1", "desktop/avalon-original-window.ps1"],
     "publish": [
       {
         "provider": "github",

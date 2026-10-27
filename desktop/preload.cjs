@@ -2,6 +2,9 @@
 const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('DesktopApp', {
   avalon: {
+    original: action => ipcRenderer.invoke('avalon:original', action),
+    roads: (action,args) => ipcRenderer.invoke('avalon:roads', action,args),
+    onRoads: callback => { const listener=()=>callback(); ipcRenderer.on('avalon:roads-changed',listener); return ()=>ipcRenderer.removeListener('avalon:roads-changed',listener); },
     library: () => ipcRenderer.invoke('avalon:library'),
     importFolder: () => ipcRenderer.invoke('avalon:import'),
     scan: () => ipcRenderer.invoke('avalon:scan'),

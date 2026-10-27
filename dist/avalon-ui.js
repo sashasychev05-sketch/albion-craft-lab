@@ -34,5 +34,5 @@ async function scanned(result){if(!loaded)await load();if(result.error){message(
 $('avalon-scan').disabled=true;$('avalon-hotkey').disabled=true;
 $('avalon-scan').onclick=async()=>{try{$('avalon-scan').disabled=true;message('Через 3 секунды: переключитесь в игру и наведите курсор на название портала…');await new Promise(r=>setTimeout(r,3000));await scanned(await bridge.scan());}catch(e){message(e.message,true);}finally{$('avalon-scan').disabled=!bridge||!zones.length;}};
 $('avalon-hotkey').onchange=async()=>{try{const state=await bridge.hotkey($('avalon-hotkey').checked);hotkeyEnabled=state.enabled;$('avalon-hotkey').checked=state.enabled;message(state.enabled?'Ctrl+Shift+A включена. Наведите курсор на название портала в игре.':'Горячая клавиша выключена.');}catch(e){$('avalon-hotkey').checked=false;message(e.message,true);}};
-bridge?.onScan(scanned);window.AvalonUI={...api,select,load,snapshot:()=>({selected,zones:zones.length,filters:filters(),saved:saved()})};
+bridge?.onScan(scanned);window.AvalonUI={...api,select,load,features,catalog:()=>zones,removeTimer(id){store.remove(id);timers();},snapshot:()=>({selected,zones:zones.length,filters:filters(),saved:saved()})};
 })();
