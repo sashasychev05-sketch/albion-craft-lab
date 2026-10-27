@@ -41,7 +41,7 @@ jobs:
           }
           $release = gh release view $tag --repo $env:GITHUB_REPOSITORY --json isDraft | ConvertFrom-Json
           if (-not $release.isDraft) { throw 'Refusing to overwrite a published release' }
-          gh release upload $tag release/*.exe release/*.blockmap release/*.yml --repo $env:GITHUB_REPOSITORY
+          gh release upload $tag release/*.exe release/*.blockmap release/latest.yml --repo $env:GITHUB_REPOSITORY
           if ($LASTEXITCODE -ne 0) { throw 'Cannot upload release files' }
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
