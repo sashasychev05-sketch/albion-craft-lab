@@ -79,7 +79,7 @@ else {
     shopping = require('./shopping-window.cjs').createShoppingWindow({ BrowserWindow, ipcMain, screen, app, getMain: () => window, origin: ORIGIN, diagnostic: !!diagnosticFolder });
     avalon = require('./avalon-controller.cjs').createAvalon({app,ipcMain,dialog,BrowserWindow,screen,desktopCapturer,globalShortcut,net,getMain:()=>window,origin:ORIGIN,diagnostic:!!diagnosticFolder});
     marketScanner=require('./market-scanner.cjs').createScanner({app,dialog,notify:state=>{if(window&&!window.isDestroyed())window.webContents.send('market-scanner:changed',state);}});
-    ipcMain.handle('market-scanner:action',async(event,action,arg)=>{if(!senderAllowed(event))throw Error('Forbidden');if(action==='state')return marketScanner.state();if(action==='select')return marketScanner.select();if(action==='start')return marketScanner.start(arg);if(action==='stop'){await marketScanner.stop();return marketScanner.state();}throw Error('Invalid action');});
+    ipcMain.handle('market-scanner:action',async(event,action,arg)=>{if(!senderAllowed(event))throw Error('Forbidden');if(action==='state')return marketScanner.state();if(action==='start')return marketScanner.start(arg);if(action==='stop'){await marketScanner.stop();return marketScanner.state();}throw Error('Invalid action');});
     app.on('before-quit',()=>{marketScanner.stop().catch(()=>{});});
     createWindow();
   }).catch(error => { console.error(error); if (!diagnosticFolder) dialog.showErrorBox('Albion Lab', 'Не удалось запустить приложение: ' + error.message); app.exit(1); });

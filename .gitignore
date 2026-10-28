@@ -9,3 +9,5 @@ work/
 outputs/
 *.exe
 *.blockmap
+
+!desktop/vendor/aodp/albiondata-client.exe

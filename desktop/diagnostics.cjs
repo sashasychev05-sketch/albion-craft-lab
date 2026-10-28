@@ -25,9 +25,18 @@ async function run(window, updates, folder, shopping, offlineAttempts = [], aval
   assert.equal(result.noDefaultProfitGoal, true);
   assert.equal(result.modes.length, 18, JSON.stringify(errors));
   if(process.argv.includes('--market-only')) {
+    window.showInactive();
     const market=await window.webContents.executeJavaScript(`(async()=>({panel:!!document.querySelector('.market-scanner'),resolve:typeof PriceBook.resolve,state:await DesktopApp.marketScanner.action('state')}))()`);
     assert.equal(market.panel,true);assert.equal(market.resolve,'function');assert.equal(market.state.running,false);
-    await window.webContents.executeJavaScript(`document.querySelector('.market-scanner').showModal()`);
+    await window.webContents.executeJavaScript(`(async()=>{document.querySelector('.market-scanner').showModal();await new Promise(r=>setTimeout(r,300))})()`);
+    if(process.argv.includes('--market-engine')){
+      await window.webContents.executeJavaScript(`document.querySelector('.market-scanner [data-toggle]').click()`);
+      let active;for(let attempt=0;attempt<20;attempt++){await new Promise(r=>setTimeout(r,500));active=await window.webContents.executeJavaScript(`DesktopApp.marketScanner.action('state')`);if(Object.hasOwn(active.telemetry||{},'capture'))break;}
+      assert.equal(active.running,true);assert.equal(Object.hasOwn(active.telemetry,'capture'),true);market.embeddedEngine=true;
+      await window.webContents.executeJavaScript(`document.querySelector('.market-scanner [data-toggle]').click()`);
+      await new Promise(r=>setTimeout(r,300));assert.equal((await window.webContents.executeJavaScript(`DesktopApp.marketScanner.action('state')`)).running,false);
+    }
+    const visible=await window.webContents.executeJavaScript(`(()=>{const d=document.querySelector('.market-scanner');return {open:d.open,visible:d.checkVisibility(),height:d.getBoundingClientRect().height}})()`);assert.equal(visible.open,true);assert.equal(visible.visible,true);assert.ok(visible.height>100);
     fs.writeFileSync(path.resolve(folder,'market-scanner.png'),(await window.webContents.capturePage()).toPNG());
     fs.writeFileSync(path.resolve(folder,'diagnostics.json'),JSON.stringify({result,market,errors},null,2));assert.deepEqual(errors,[]);clearTimeout(timeout);return;
   }

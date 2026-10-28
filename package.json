@@ -1,6 +1,6 @@
 {
   "name": "albion-craft-lab",
-  "version": "1.8.3",
+  "version": "1.8.4",
   "description": "Калькулятор крафта и перевозок Albion Online",
   "author": "Albion Lab",
   "main": "desktop/main.cjs",
@@ -70,6 +70,17 @@
         "ru_RU",
         "en_US"
       ]
-    }
+    },
+    "extraResources": [
+      {
+        "from": "desktop/vendor/aodp",
+        "to": "aodp",
+        "filter": [
+          "albiondata-client.exe",
+          "LICENSE",
+          "BUILD.md"
+        ]
+      }
+    ]
   }
 }
