@@ -18,6 +18,7 @@ let window;
 let updates;
 let shopping;
 let avalon;
+let marketScanner;
 const offlineAttempts = [];
 const csp = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://europe.albion-online-data.com https://west.albion-online-data.com https://east.albion-online-data.com https://api.albionfreemarket.com; object-src 'none'; base-uri 'none'; frame-src 'none'";
 function external(url) {
@@ -77,6 +78,9 @@ else {
     ]));
     shopping = require('./shopping-window.cjs').createShoppingWindow({ BrowserWindow, ipcMain, screen, app, getMain: () => window, origin: ORIGIN, diagnostic: !!diagnosticFolder });
     avalon = require('./avalon-controller.cjs').createAvalon({app,ipcMain,dialog,BrowserWindow,screen,desktopCapturer,globalShortcut,net,getMain:()=>window,origin:ORIGIN,diagnostic:!!diagnosticFolder});
+    marketScanner=require('./market-scanner.cjs').createScanner({app,dialog,notify:state=>{if(window&&!window.isDestroyed())window.webContents.send('market-scanner:changed',state);}});
+    ipcMain.handle('market-scanner:action',async(event,action,arg)=>{if(!senderAllowed(event))throw Error('Forbidden');if(action==='state')return marketScanner.state();if(action==='select')return marketScanner.select();if(action==='start')return marketScanner.start(arg);if(action==='stop'){await marketScanner.stop();return marketScanner.state();}throw Error('Invalid action');});
+    app.on('before-quit',()=>{marketScanner.stop().catch(()=>{});});
     createWindow();
   }).catch(error => { console.error(error); if (!diagnosticFolder) dialog.showErrorBox('Albion Lab', 'Не удалось запустить приложение: ' + error.message); app.exit(1); });
   app.on('window-all-closed', () => app.quit());

@@ -24,6 +24,13 @@ async function run(window, updates, folder, shopping, offlineAttempts = [], aval
   assert.equal(result.actionsInitiallyCollapsed, true);
   assert.equal(result.noDefaultProfitGoal, true);
   assert.equal(result.modes.length, 18, JSON.stringify(errors));
+  if(process.argv.includes('--market-only')) {
+    const market=await window.webContents.executeJavaScript(`(async()=>({panel:!!document.querySelector('.market-scanner'),resolve:typeof PriceBook.resolve,state:await DesktopApp.marketScanner.action('state')}))()`);
+    assert.equal(market.panel,true);assert.equal(market.resolve,'function');assert.equal(market.state.running,false);
+    await window.webContents.executeJavaScript(`document.querySelector('.market-scanner').showModal()`);
+    fs.writeFileSync(path.resolve(folder,'market-scanner.png'),(await window.webContents.capturePage()).toPNG());
+    fs.writeFileSync(path.resolve(folder,'diagnostics.json'),JSON.stringify({result,market,errors},null,2));assert.deepEqual(errors,[]);clearTimeout(timeout);return;
+  }
   if (process.argv.includes('--avalon-only')) {
     result.avalon = await require('./avalon-diagnostics.cjs').run(window, folder, avalon);
     result.errors = errors.filter(message => !/Failed to load resource.*(net::|status of)/.test(message));
