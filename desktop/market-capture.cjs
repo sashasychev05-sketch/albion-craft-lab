@@ -58,12 +58,15 @@ function createReceiver({ token, onOrders }) {
     req.on('data', chunk => { size += Buffer.byteLength(chunk); if (size > 4 * 1024 * 1024) oversized = true; else body += chunk; });
     req.on('end', async () => {
       if (oversized) { res.writeHead(413).end(); return; }
+      let data;
       try {
-        const data = JSON.parse(body);
+        data = JSON.parse(body);
         if (!Array.isArray(data?.Orders) || data.Orders.length > 10000) throw Error('Invalid orders');
+      } catch { res.writeHead(400).end(); return; }
+      try {
         await onOrders(data.Orders);
         res.writeHead(200).end();
-      } catch { res.writeHead(400).end(); }
+      } catch { res.writeHead(500).end(); }
     });
   });
 }

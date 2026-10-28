@@ -1,5 +1,13 @@
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),os=require('node:os'),path=require('node:path'),{EventEmitter}=require('node:events');
 const {createScanner}=require('../desktop/market-scanner.cjs');
+const {quotes}=require('../desktop/market-scanner.cjs');
+test('equal-price orders retain the newest confirmation timestamp',()=>{const base={server:'europe',item:'T4_BAG',location:'3005',quality:1,type:'offer',price:250};assert.equal(quotes([{...base,observedAt:100},{...base,observedAt:200}])[0].askTime,200);});
+test('concurrent market packets persist without lost orders; failed writes preserve the last saved state',async()=>{
+ const folder=fs.mkdtempSync(path.join(os.tmpdir(),'market-queue-'));let endpoint;const scanner=createScanner({app:{getPath:()=>folder},executablePath:process.execPath,notify(){},spawnProcess(_exe,args){endpoint=args[1];const child=new EventEmitter();child.kill=()=>{};return child;}});
+ await scanner.start('europe');const send=id=>fetch(endpoint+'/marketorders.ingest',{method:'POST',body:JSON.stringify({Orders:[{Id:id,ItemTypeId:'T4_BAG',LocationId:'3005',QualityLevel:1,UnitPriceSilver:2500000,Amount:1,AuctionType:'offer'}]})});
+ const original=fs.promises.rename;
+ try{const responses=await Promise.all(Array.from({length:30},(_,i)=>send(i+1)));assert.ok(responses.every(r=>r.status===200));assert.equal(scanner.state().orders,30);fs.promises.rename=async()=>{throw Error('simulated write failure');};assert.equal((await send(31)).status,500);assert.equal(scanner.state().orders,30);fs.promises.rename=original;assert.equal((await send(31)).status,200);await scanner.stop();assert.equal(JSON.parse(fs.readFileSync(path.join(folder,'market-scanner/orders.json'))).orders.length,31);}finally{fs.promises.rename=original;await scanner.stop();fs.rmSync(folder,{recursive:true,force:true});}
+});
 test('client routes only locally, orders persist and quote survives restart',async()=>{
  const folder=fs.mkdtempSync(path.join(os.tmpdir(),'market-scanner-'));let endpoint,args,stream;
  const options={app:{getPath:()=>folder},executablePath:process.execPath,notify(){},spawnProcess(_exe,a){args=a;endpoint=a[1];const child=new EventEmitter();child.kill=()=>{};stream=child.stdout=new EventEmitter();return child;}};
