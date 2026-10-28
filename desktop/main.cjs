@@ -82,7 +82,7 @@ else {
     marketScanner=require('./market-scanner.cjs').createScanner({app,dialog,notify:state=>{if(window&&!window.isDestroyed())window.webContents.send('market-scanner:changed',state);marketOverlay?.update(state);}});
     marketOverlay=require('./market-overlay.cjs').createMarketOverlay({BrowserWindow,ipcMain,screen,origin:ORIGIN,getState:()=>marketScanner.state()});
     ipcMain.handle('market-scanner:action',async(event,action,arg)=>{if(!senderAllowed(event))throw Error('Forbidden');if(action==='state')return marketScanner.state();if(action==='overlay'){await marketOverlay.open();return marketScanner.state();}if(action==='start'){const state=await marketScanner.start(arg);await marketOverlay.open();return state;}if(action==='stop'){await marketScanner.stop();return marketScanner.state();}throw Error('Invalid action');});
-    app.on('before-quit',()=>{marketScanner.stop().catch(()=>{});});
+    let marketQuitting=false;app.on('before-quit',event=>{if(marketQuitting)return;event.preventDefault();marketQuitting=true;marketScanner.stop().catch(()=>{}).finally(()=>app.quit());});
     createWindow();
   }).catch(error => { console.error(error); if (!diagnosticFolder) dialog.showErrorBox('Albion Lab', 'Не удалось запустить приложение: ' + error.message); app.exit(1); });
   app.on('window-all-closed', () => app.quit());
