@@ -19,6 +19,7 @@ let updates;
 let shopping;
 let avalon;
 let marketScanner;
+let marketOverlay;
 const offlineAttempts = [];
 const csp = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://europe.albion-online-data.com https://west.albion-online-data.com https://east.albion-online-data.com https://api.albionfreemarket.com; object-src 'none'; base-uri 'none'; frame-src 'none'";
 function external(url) {
@@ -42,7 +43,7 @@ function createWindow() {
   window.webContents.on('will-navigate', (event, url) => { if (url !== `${ORIGIN}/index.html`) { event.preventDefault(); external(url); } });
   window.webContents.on('will-attach-webview', event => event.preventDefault());
   shopping.attach(window);
-  window.on('closed', () => { window = null; });
+  window.on('closed', () => { marketOverlay?.close();window = null; });
   window.once('ready-to-show', () => { if (!diagnosticFolder) window.show(); });
   window.loadURL(`${ORIGIN}/index.html`);
   if (diagnosticFolder) require('./diagnostics.cjs').run(window, updates, diagnosticFolder, shopping, offlineAttempts, avalon).then(() => app.exit(0)).catch(async error => { console.error(error);try{fs.writeFileSync(path.resolve(diagnosticFolder,'failure.png'),(await window.webContents.capturePage()).toPNG());fs.writeFileSync(path.resolve(diagnosticFolder,'failure-state.json'),JSON.stringify(await window.webContents.executeJavaScript("({workspace:window.Workspace?.snapshot(),notice:document.getElementById('workspace-status')?.textContent,mode:document.querySelector('button.nav.active')?.dataset.mode})"),null,2));}catch{}app.exit(1); });
@@ -78,8 +79,9 @@ else {
     ]));
     shopping = require('./shopping-window.cjs').createShoppingWindow({ BrowserWindow, ipcMain, screen, app, getMain: () => window, origin: ORIGIN, diagnostic: !!diagnosticFolder });
     avalon = require('./avalon-controller.cjs').createAvalon({app,ipcMain,dialog,BrowserWindow,screen,desktopCapturer,globalShortcut,net,getMain:()=>window,origin:ORIGIN,diagnostic:!!diagnosticFolder});
-    marketScanner=require('./market-scanner.cjs').createScanner({app,dialog,notify:state=>{if(window&&!window.isDestroyed())window.webContents.send('market-scanner:changed',state);}});
-    ipcMain.handle('market-scanner:action',async(event,action,arg)=>{if(!senderAllowed(event))throw Error('Forbidden');if(action==='state')return marketScanner.state();if(action==='start')return marketScanner.start(arg);if(action==='stop'){await marketScanner.stop();return marketScanner.state();}throw Error('Invalid action');});
+    marketScanner=require('./market-scanner.cjs').createScanner({app,dialog,notify:state=>{if(window&&!window.isDestroyed())window.webContents.send('market-scanner:changed',state);marketOverlay?.update(state);}});
+    marketOverlay=require('./market-overlay.cjs').createMarketOverlay({BrowserWindow,ipcMain,screen,origin:ORIGIN,getState:()=>marketScanner.state()});
+    ipcMain.handle('market-scanner:action',async(event,action,arg)=>{if(!senderAllowed(event))throw Error('Forbidden');if(action==='state')return marketScanner.state();if(action==='overlay'){await marketOverlay.open();return marketScanner.state();}if(action==='start'){const state=await marketScanner.start(arg);await marketOverlay.open();return state;}if(action==='stop'){await marketScanner.stop();return marketScanner.state();}throw Error('Invalid action');});
     app.on('before-quit',()=>{marketScanner.stop().catch(()=>{});});
     createWindow();
   }).catch(error => { console.error(error); if (!diagnosticFolder) dialog.showErrorBox('Albion Lab', 'Не удалось запустить приложение: ' + error.message); app.exit(1); });

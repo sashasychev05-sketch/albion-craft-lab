@@ -36,6 +36,14 @@ async function run(window, updates, folder, shopping, offlineAttempts = [], aval
       await window.webContents.executeJavaScript(`document.querySelector('.market-scanner [data-toggle]').click()`);
       await new Promise(r=>setTimeout(r,300));assert.equal((await window.webContents.executeJavaScript(`DesktopApp.marketScanner.action('state')`)).running,false);
     }
+    if(process.argv.includes('--market-overlay')){
+      await window.webContents.executeJavaScript(`DesktopApp.marketScanner.action('overlay')`);
+      const overlay=require('electron').BrowserWindow.getAllWindows().find(w=>w.webContents.getURL().endsWith('/market-overlay.html'));assert.ok(overlay);assert.equal(overlay.isAlwaysOnTop(),true);assert.equal(overlay.isFocused(),false);
+      const fixture={running:true,server:'europe',orders:15,session:{added:12,updated:3},quotes:[{server:'europe',item:'T4_BAG',city:'Caerleon',quality:1,ask:250,bid:200,askTime:Date.now(),bidTime:Date.now()},{server:'europe',item:'T4_CLOTH',city:'Lymhurst',quality:1,ask:150,askTime:Date.now()}]};overlay.webContents.send('market-overlay:state',fixture);await new Promise(r=>setTimeout(r,700));
+      assert.equal(await overlay.webContents.executeJavaScript(`document.querySelectorAll('article').length`),2);assert.equal(await overlay.webContents.executeJavaScript(`document.getElementById('prices').textContent`),'3 цен');
+      await overlay.webContents.executeJavaScript(`document.getElementById('pause').click()`);overlay.webContents.send('market-overlay:state',{...fixture,quotes:[]});await new Promise(r=>setTimeout(r,300));assert.equal(await overlay.webContents.executeJavaScript(`document.querySelectorAll('article').length`),2);
+      fs.writeFileSync(path.resolve(folder,'market-overlay.png'),(await overlay.webContents.capturePage()).toPNG());overlay.close();market.overlay={alwaysOnTop:true,noFocusSteal:true,prices:true,pausedList:true};
+    }
     const visible=await window.webContents.executeJavaScript(`(()=>{const d=document.querySelector('.market-scanner');return {open:d.open,visible:d.checkVisibility(),height:d.getBoundingClientRect().height}})()`);assert.equal(visible.open,true);assert.equal(visible.visible,true);assert.ok(visible.height>100);
     fs.writeFileSync(path.resolve(folder,'market-scanner.png'),(await window.webContents.capturePage()).toPNG());
     fs.writeFileSync(path.resolve(folder,'diagnostics.json'),JSON.stringify({result,market,errors},null,2));assert.deepEqual(errors,[]);clearTimeout(timeout);return;
