@@ -24,6 +24,23 @@ async function run(window, updates, folder, shopping, offlineAttempts = [], aval
   assert.equal(result.actionsInitiallyCollapsed, true);
   assert.equal(result.noDefaultProfitGoal, true);
   assert.equal(result.modes.length, 18, JSON.stringify(errors));
+  if(process.argv.includes('--sat-only')) {
+    const state=()=>window.webContents.executeJavaScript(`DesktopApp.statistics.action('state')`);
+    await window.webContents.executeJavaScript(`DesktopApp.statistics.action('open')`);
+    const end=Date.now()+240000;
+    let current;
+    do { await new Promise(r=>setTimeout(r,1000));current=await state(); if(!current.running)throw Error(current.message); } while(!/запущена/.test(current.message)&&Date.now()<end);
+    assert.match(current.message,/запущена/);
+    const host=require('electron').BaseWindow.getAllWindows().find(w=>w.webContents?.getURL().endsWith('/sat-host.html'));
+    assert.ok(host);host.setSize(1100,800);
+    await new Promise(r=>setTimeout(r,1000));
+    fs.writeFileSync(path.resolve(folder,'sat-diagnostics.json'),JSON.stringify({ready:current,hostSize:host.getSize(),errors},null,2));
+    if(process.argv.includes('--sat-inspect'))await new Promise(r=>setTimeout(r,240000));
+    await window.webContents.executeJavaScript(`DesktopApp.statistics.action('stop')`);
+    assert.equal((await state()).running,false);
+    fs.writeFileSync(path.resolve(folder,'sat-diagnostics.json'),JSON.stringify({ready:current,closed:true,hostSize:[1100,800],errors},null,2));
+    clearTimeout(timeout);return;
+  }
   if(process.argv.includes('--market-only')) {
     window.showInactive();
     const market=await window.webContents.executeJavaScript(`(async()=>({panel:!!document.querySelector('.market-scanner'),resolve:typeof PriceBook.resolve,state:await DesktopApp.marketScanner.action('state')}))()`);

@@ -11,3 +11,6 @@ outputs/
 *.blockmap
 
 !desktop/vendor/aodp/albiondata-client.exe
+third_party/statistics-analysis/**/bin/
+third_party/statistics-analysis/**/obj/
+third_party/statistics-analysis/**/TestResults/

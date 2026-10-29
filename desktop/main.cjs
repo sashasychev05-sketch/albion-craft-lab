@@ -1,5 +1,5 @@
 'use strict';
-const { app, BrowserWindow, Menu, ipcMain, protocol, net, session, shell, dialog, screen, desktopCapturer, globalShortcut } = require('electron');
+const { app, BrowserWindow, BaseWindow, WebContentsView, Menu, ipcMain, protocol, net, session, shell, dialog, screen, desktopCapturer, globalShortcut } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
 const { pathToFileURL } = require('node:url');
@@ -20,6 +20,7 @@ let shopping;
 let avalon;
 let marketScanner;
 let marketOverlay;
+let statistics;
 const offlineAttempts = [];
 const csp = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://europe.albion-online-data.com https://west.albion-online-data.com https://east.albion-online-data.com https://api.albionfreemarket.com; object-src 'none'; base-uri 'none'; frame-src 'none'";
 function external(url) {
@@ -43,7 +44,7 @@ function createWindow() {
   window.webContents.on('will-navigate', (event, url) => { if (url !== `${ORIGIN}/index.html`) { event.preventDefault(); external(url); } });
   window.webContents.on('will-attach-webview', event => event.preventDefault());
   shopping.attach(window);
-  window.on('closed', () => { marketOverlay?.close();window = null; });
+  window.on('closed', () => { marketOverlay?.close();statistics?.stop().catch(()=>{});window = null; });
   window.once('ready-to-show', () => { if (!diagnosticFolder) window.show(); });
   window.loadURL(`${ORIGIN}/index.html`);
   if (diagnosticFolder) require('./diagnostics.cjs').run(window, updates, diagnosticFolder, shopping, offlineAttempts, avalon).then(() => app.exit(0)).catch(async error => { console.error(error);try{fs.writeFileSync(path.resolve(diagnosticFolder,'failure.png'),(await window.webContents.capturePage()).toPNG());fs.writeFileSync(path.resolve(diagnosticFolder,'failure-state.json'),JSON.stringify(await window.webContents.executeJavaScript("({workspace:window.Workspace?.snapshot(),notice:document.getElementById('workspace-status')?.textContent,mode:document.querySelector('button.nav.active')?.dataset.mode})"),null,2));}catch{}app.exit(1); });
@@ -73,16 +74,18 @@ else {
     ipcMain.handle('updates:state', event => { if (!senderAllowed(event)) throw new Error('Forbidden'); return updates.snapshot(); });
     ipcMain.handle('updates:action', event => { if (!senderAllowed(event)) throw new Error('Forbidden'); return updates.action(); });
     Menu.setApplicationMenu(Menu.buildFromTemplate([
-      { label: 'Программа', submenu: [{ label: 'Выйти', role: 'quit' }] },
+      { label: 'Программа', submenu: [{ label:'О программе и лицензии',click:async()=>{const result=await dialog.showMessageBox({type:'info',title:'Albion Lab',message:'Albion Lab · GPL-3.0',detail:'Объединённая программа распространяется под GNU GPL версии 3 без гарантий. Исходники, инструкции сборки и лицензии сторонних компонентов доступны в репозитории проекта. Statistics Analysis Tool — Triky313 и участники проекта, GPL-3.0.',buttons:['Закрыть','Открыть исходники']});if(result.response===1)external('https://github.com/sashasychev05-sketch/albion-craft-lab');}},{ label: 'Выйти', role: 'quit' }] },
       { label: 'Правка', submenu: [{ label: 'Отменить', role: 'undo' }, { label: 'Повторить', role: 'redo' }, { type: 'separator' }, { label: 'Вырезать', role: 'cut' }, { label: 'Копировать', role: 'copy' }, { label: 'Вставить', role: 'paste' }, { label: 'Выделить всё', role: 'selectAll' }] },
       { label: 'Вид', submenu: [{ label: 'Увеличить', role: 'zoomIn' }, { label: 'Уменьшить', role: 'zoomOut' }, { label: 'Исходный масштаб', role: 'resetZoom' }, { label: 'На весь экран', role: 'togglefullscreen' }] }
     ]));
     shopping = require('./shopping-window.cjs').createShoppingWindow({ BrowserWindow, ipcMain, screen, app, getMain: () => window, origin: ORIGIN, diagnostic: !!diagnosticFolder });
     avalon = require('./avalon-controller.cjs').createAvalon({app,ipcMain,dialog,BrowserWindow,screen,desktopCapturer,globalShortcut,net,getMain:()=>window,origin:ORIGIN,diagnostic:!!diagnosticFolder});
     marketScanner=require('./market-scanner.cjs').createScanner({app,dialog,notify:state=>{if(window&&!window.isDestroyed())window.webContents.send('market-scanner:changed',state);marketOverlay?.update(state);}});
+    statistics=require('./sat-host.cjs').createSatHost({app,BrowserWindow,BaseWindow,WebContentsView,origin:ORIGIN,notify:state=>{if(window&&!window.isDestroyed())window.webContents.send('sat:state',state);}});
+    ipcMain.handle('statistics:action',async(event,action)=>{if(!senderAllowed(event))throw Error('Forbidden');if(action==='state')return statistics.snapshot();if(action==='open')return statistics.open();if(action==='stop'){await statistics.stop();return statistics.snapshot();}throw Error('Invalid action');});
     marketOverlay=require('./market-overlay.cjs').createMarketOverlay({BrowserWindow,ipcMain,screen,origin:ORIGIN,getState:()=>marketScanner.state()});
     ipcMain.handle('market-scanner:action',async(event,action,arg)=>{if(!senderAllowed(event))throw Error('Forbidden');if(action==='state')return marketScanner.state();if(action==='overlay'){await marketOverlay.open();return marketScanner.state();}if(action==='start'){const state=await marketScanner.start(arg);await marketOverlay.open();return state;}if(action==='stop'){await marketScanner.stop();return marketScanner.state();}throw Error('Invalid action');});
-    let marketQuitting=false;app.on('before-quit',event=>{if(marketQuitting)return;event.preventDefault();marketQuitting=true;marketScanner.stop().catch(()=>{}).finally(()=>app.quit());});
+    let marketQuitting=false;app.on('before-quit',event=>{if(marketQuitting)return;event.preventDefault();marketQuitting=true;Promise.allSettled([marketScanner.stop(),statistics.stop()]).finally(()=>app.quit());});
     createWindow();
   }).catch(error => { console.error(error); if (!diagnosticFolder) dialog.showErrorBox('Albion Lab', 'Не удалось запустить приложение: ' + error.message); app.exit(1); });
   app.on('window-all-closed', () => app.quit());

@@ -14,6 +14,9 @@ jobs:
         with:
           node-version: '24'
           cache: npm
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
       - run: npm ci
       - name: Validate release version
         shell: pwsh
@@ -23,6 +26,8 @@ jobs:
           if ($lock.version -ne $version -or $lock.packages[''].version -ne $version) { throw 'Version mismatch' }
           if ($env:GITHUB_REF_TYPE -eq 'tag' -and $env:GITHUB_REF_NAME -ne "v$version") { throw 'Tag does not match package version' }
       - run: npm test
+      - name: Test Statistics Analysis Tool
+        run: dotnet test third_party/statistics-analysis/src/StatisticsAnalysisTool.UnitTests/StatisticsAnalysisTool.UnitTests.csproj -c Release -p:LocalInstallerBuild=true --results-directory work/sat-test-results
       - name: Build installer
         run: npm run build:win
         env:
