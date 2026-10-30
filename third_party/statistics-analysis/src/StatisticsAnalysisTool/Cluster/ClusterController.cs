@@ -63,6 +63,8 @@ public sealed class ClusterController(TrackingController trackingController, Mai
 
         if (trackingController.IsTrackingAllowedByMainCharacter())
         {
+            AlbionLabSessionBridge.Publish("location", new { id = CurrentCluster.Index, name = GetClusterDisplayName(CurrentCluster),
+                instance = CurrentCluster.InstanceName, mapType = CurrentCluster.MapType.ToString(), tier = CurrentCluster.Tier.ToString() });
             OnChangeCluster?.Invoke(CurrentCluster);
         }
 

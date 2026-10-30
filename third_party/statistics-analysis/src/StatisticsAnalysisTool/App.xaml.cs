@@ -70,14 +70,15 @@ public partial class App
             if (!LocalizationController.Init())
             {
                 _isEarlyShutdown = true;
-                Current.Shutdown();
+                Current?.Shutdown();
                 return;
             }
 
             if (!ShowFirstStartGuideIfNeeded())
             {
+                if (AlbionLabHost.IsEmbedded) AlbionLabHost.EventLine("{\"type\":\"setup-cancelled\"}");
                 _isEarlyShutdown = true;
-                Current.Shutdown();
+                Current?.Shutdown();
                 return;
             }
 
@@ -118,7 +119,7 @@ public partial class App
                         40))
                 {
                     _isEarlyShutdown = true;
-                    Current.Shutdown();
+                    Current?.Shutdown();
                     return;
                 }
 
@@ -139,6 +140,7 @@ public partial class App
                 await _serverUserDataCoordinator.SyncCurrentServerAsync();
                 ReportStartupProgress(97, LocalizationController.Translation("TRACKING"));
                 await _trackingController.InitTrackingAsync();
+                AlbionLabSessionBridge.Watch(_trackingController, _mainWindowViewModel);
                 ReportStartupProgress(100, LocalizationController.Translation("TRACKING"));
                 AlbionLabHost.Attach(Current.MainWindow);
                 Current.MainWindow.Show();
@@ -165,7 +167,7 @@ public partial class App
                 await Log.CloseAndFlushAsync();
             }
 
-            Current.Shutdown();
+            Current?.Shutdown();
         }
     }
 
@@ -197,7 +199,9 @@ public partial class App
         }
 
         Log.Information("First start guide opened.");
+        if (AlbionLabHost.IsEmbedded) AlbionLabHost.EventLine("{\"type\":\"setup-required\"}");
         var dialog = new FirstStartGuideWindow();
+        AlbionLabHost.Attach(dialog, false);
         var result = dialog.ShowDialog();
 
         if (result is true)
@@ -268,6 +272,7 @@ public partial class App
         }
         finally
         {
+            AlbionLabSessionBridge.Close();
             Log.CloseAndFlush();
         }
     }
@@ -302,6 +307,7 @@ public partial class App
         }
         finally
         {
+            AlbionLabSessionBridge.Close();
             Log.CloseAndFlush();
             e.Handled = false;
         }
@@ -339,6 +345,7 @@ public partial class App
     {
         if (_isEarlyShutdown || _trackingController is null)
         {
+            AlbionLabSessionBridge.Close();
             return;
         }
 
@@ -356,6 +363,7 @@ public partial class App
         }
         finally
         {
+            AlbionLabSessionBridge.Close();
             Log.CloseAndFlush();
         }
     }
@@ -381,6 +389,7 @@ public partial class App
         }
         finally
         {
+            AlbionLabSessionBridge.Close();
             Log.CloseAndFlush();
         }
     }

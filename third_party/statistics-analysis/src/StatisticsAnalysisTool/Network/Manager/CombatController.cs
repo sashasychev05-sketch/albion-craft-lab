@@ -155,6 +155,7 @@ public class CombatController
 
                 contentDamageStatsTracker.RecordOverheal(causerGameObject.Value.Key, causerGameObjectValue.Name, positiveHealChangeValue);
                 _damageStatsTracker.RecordOverheal(causerGameObject.Value.Key, causerGameObjectValue.Name, positiveHealChangeValue);
+                AlbionLabSessionBridge.Combat(_trackingController, "Overheal", causerId, affectedId, positiveHealChangeValue, causingSpellIndex, contentType.ToString());
             }
         }
 

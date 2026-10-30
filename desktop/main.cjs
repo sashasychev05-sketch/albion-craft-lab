@@ -21,6 +21,16 @@ let avalon;
 let marketScanner;
 let marketOverlay;
 let statistics;
+let gameSession;
+let sessionOverlay;
+let sessionIcons;
+let sessionQuitting=false;
+async function sessionSnapshot(filter={sessionId:'current'}) {
+  return {data:await gameSession.request('query',filter),settings:gameSession.settings(),storage:gameSession.status(),engine:statistics.snapshot(),overlayOpen:!!sessionOverlay?.getWindow()};
+}
+function sessionChanged() {
+  if(window&&!window.isDestroyed())window.webContents.send('session:changed',{engine:statistics?.snapshot(),settings:gameSession?.settings(),storage:gameSession?.status()});
+}
 const offlineAttempts = [];
 const csp = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://europe.albion-online-data.com https://west.albion-online-data.com https://east.albion-online-data.com https://api.albionfreemarket.com; object-src 'none'; base-uri 'none'; frame-src 'none'";
 function external(url) {
@@ -44,10 +54,10 @@ function createWindow() {
   window.webContents.on('will-navigate', (event, url) => { if (url !== `${ORIGIN}/index.html`) { event.preventDefault(); external(url); } });
   window.webContents.on('will-attach-webview', event => event.preventDefault());
   shopping.attach(window);
-  window.on('closed', () => { marketOverlay?.close();statistics?.stop().catch(()=>{});window = null; });
+  window.on('closed', () => { marketOverlay?.close();sessionOverlay?.close();statistics?.stop().catch(()=>{});window = null; });
   window.once('ready-to-show', () => { if (!diagnosticFolder) window.show(); });
   window.loadURL(`${ORIGIN}/index.html`);
-  if (diagnosticFolder) require('./diagnostics.cjs').run(window, updates, diagnosticFolder, shopping, offlineAttempts, avalon).then(() => app.exit(0)).catch(async error => { console.error(error);try{fs.writeFileSync(path.resolve(diagnosticFolder,'failure.png'),(await window.webContents.capturePage()).toPNG());fs.writeFileSync(path.resolve(diagnosticFolder,'failure-state.json'),JSON.stringify(await window.webContents.executeJavaScript("({workspace:window.Workspace?.snapshot(),notice:document.getElementById('workspace-status')?.textContent,mode:document.querySelector('button.nav.active')?.dataset.mode})"),null,2));}catch{}app.exit(1); });
+  if (diagnosticFolder) require('./diagnostics.cjs').run(window, updates, diagnosticFolder, shopping, offlineAttempts, avalon, {statistics,gameSession,sessionOverlay}).then(() => app.exit(0)).catch(async error => { console.error(error);try{fs.writeFileSync(path.resolve(diagnosticFolder,'failure.png'),(await window.webContents.capturePage()).toPNG());fs.writeFileSync(path.resolve(diagnosticFolder,'failure-state.json'),JSON.stringify(await window.webContents.executeJavaScript("({workspace:window.Workspace?.snapshot(),notice:document.getElementById('workspace-status')?.textContent,mode:document.querySelector('button.nav.active')?.dataset.mode})"),null,2));}catch{}app.exit(1); });
 }
 if (!app.requestSingleInstanceLock()) app.quit();
 else {
@@ -58,6 +68,7 @@ else {
       try {
         const url = new URL(request.url);
         if(url.hostname==='app'&&url.pathname.startsWith('/avalon-local/'))return avalon.image(decodeURIComponent(url.pathname.slice('/avalon-local/'.length)));
+        if(url.hostname==='app'&&url.pathname.startsWith('/session-item/'))return sessionIcons.image(request);
         const filename = path.resolve(root, '.' + decodeURIComponent(url.pathname));
         if (url.hostname !== 'app' || !filename.startsWith(root + path.sep)) return new Response('Forbidden', { status: 403 });
         const response = await net.fetch(pathToFileURL(filename).href);
@@ -81,12 +92,35 @@ else {
     shopping = require('./shopping-window.cjs').createShoppingWindow({ BrowserWindow, ipcMain, screen, app, getMain: () => window, origin: ORIGIN, diagnostic: !!diagnosticFolder });
     avalon = require('./avalon-controller.cjs').createAvalon({app,ipcMain,dialog,BrowserWindow,screen,desktopCapturer,globalShortcut,net,getMain:()=>window,origin:ORIGIN,diagnostic:!!diagnosticFolder});
     marketScanner=require('./market-scanner.cjs').createScanner({app,dialog,notify:state=>{if(window&&!window.isDestroyed())window.webContents.send('market-scanner:changed',state);marketOverlay?.update(state);}});
-    statistics=require('./sat-host.cjs').createSatHost({app,BrowserWindow,BaseWindow,WebContentsView,origin:ORIGIN,notify:state=>{if(window&&!window.isDestroyed())window.webContents.send('sat:state',state);}});
+    gameSession=require('./game-session.cjs').createGameSession({app,notify:sessionChanged});
+    sessionIcons=require('./session-icons.cjs').createSessionIcons({app,net,offline:!!diagnosticFolder&&process.argv.includes('--offline-network')});
+    statistics=require('./sat-host.cjs').createSatHost({app,BrowserWindow,BaseWindow,WebContentsView,origin:ORIGIN,onData:()=>gameSession.wake(),notify:state=>{
+      if(window&&!window.isDestroyed())window.webContents.send('sat:state',state);
+      if(!sessionQuitting&&(state.event==='setup-cancelled'||state.event==='exit'&&!state.expected))gameSession.configure({initialized:true,enabled:false});
+      if(!sessionQuitting&&state.event==='capture-state')gameSession.configure({enabled:state.captureRequested});
+      sessionChanged();
+    }});
+    sessionOverlay=require('./session-overlay.cjs').createSessionOverlay({app,BrowserWindow,ipcMain,screen,origin:ORIGIN,getState:()=>sessionSnapshot(),onVisible:visible=>{if(!sessionQuitting)gameSession.configure({overlay:visible});sessionChanged();}});
+    ipcMain.handle('session:action',async(event,action,args)=>{
+      if(!senderAllowed(event))throw Error('Forbidden');
+      if(action==='state')return {settings:gameSession.settings(),engine:statistics.snapshot(),storage:gameSession.status()};
+      if(action==='query')return sessionSnapshot(args||{});
+      if(action==='start'){gameSession.configure({initialized:true,enabled:true});gameSession.wake();await statistics.start();sessionChanged();return sessionSnapshot();}
+      if(action==='stop'){gameSession.configure({initialized:true,enabled:false});await statistics.stop();gameSession.wake();sessionChanged();return sessionSnapshot();}
+      if(action==='tools'){await statistics.open(typeof args?.module==='string'?args.module:undefined,gameSession.settings().enabled);return statistics.snapshot();}
+      if(action==='overlay'){await sessionOverlay.open();return sessionSnapshot();}
+      if(action==='new-session'){statistics.newSession();return sessionSnapshot();}
+      if(action==='documents')return gameSession.request('documents',args);
+      if(action==='document')return gameSession.request('document',args);
+      throw Error('Invalid action');
+    });
     ipcMain.handle('statistics:action',async(event,action)=>{if(!senderAllowed(event))throw Error('Forbidden');if(action==='state')return statistics.snapshot();if(action==='open')return statistics.open();if(action==='stop'){await statistics.stop();return statistics.snapshot();}throw Error('Invalid action');});
     marketOverlay=require('./market-overlay.cjs').createMarketOverlay({BrowserWindow,ipcMain,screen,origin:ORIGIN,getState:()=>marketScanner.state()});
     ipcMain.handle('market-scanner:action',async(event,action,arg)=>{if(!senderAllowed(event))throw Error('Forbidden');if(action==='state')return marketScanner.state();if(action==='overlay'){await marketOverlay.open();return marketScanner.state();}if(action==='start'){const state=await marketScanner.start(arg);await marketOverlay.open();return state;}if(action==='stop'){await marketScanner.stop();return marketScanner.state();}throw Error('Invalid action');});
-    let marketQuitting=false;app.on('before-quit',event=>{if(marketQuitting)return;event.preventDefault();marketQuitting=true;Promise.allSettled([marketScanner.stop(),statistics.stop()]).finally(()=>app.quit());});
+    let marketQuitting=false;app.on('before-quit',event=>{if(marketQuitting)return;event.preventDefault();marketQuitting=true;sessionQuitting=true;sessionOverlay.dispose();Promise.allSettled([marketScanner.stop(),statistics.stop()]).then(()=>gameSession.close()).catch(error=>console.error(error.message)).finally(()=>app.quit());});
     createWindow();
+    if(gameSession.settings().enabled){gameSession.wake();statistics.start().catch(error=>{gameSession.configure({enabled:false});console.error(error.message);sessionChanged();});}
+    if(gameSession.settings().overlay)sessionOverlay.open().catch(error=>console.error(error.message));
   }).catch(error => { console.error(error); if (!diagnosticFolder) dialog.showErrorBox('Albion Lab', 'Не удалось запустить приложение: ' + error.message); app.exit(1); });
   app.on('window-all-closed', () => app.quit());
 }

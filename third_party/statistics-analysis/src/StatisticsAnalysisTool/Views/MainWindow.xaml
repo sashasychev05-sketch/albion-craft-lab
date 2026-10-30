@@ -205,7 +205,7 @@
             </Border>
         </Grid>
 
-        <TabControl Style="{DynamicResource TabControlStyle}">
+        <TabControl x:Name="AlbionLabModules" Style="{DynamicResource TabControlStyle}">
             <TabItem Visibility="{Binding DashboardTabVisibility, Mode=OneWay}" Header="{Binding Translation.Dashboard, FallbackValue=DASHBOARD}" Tag="pack://application:,,,/Assets/Navigation/dashboard.png">
                 <Grid Style="{StaticResource TabItemGridStyle}">
                     <userControls:DashboardControl DataContext="{Binding RelativeSource={RelativeSource AncestorType=Window}, Path=DataContext}" />

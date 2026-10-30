@@ -93,7 +93,7 @@ public class TrackingController : ITrackingController
 
     public async Task InitTrackingAsync()
     {
-        await StartTrackingAsync();
+        if (!AlbionLabHost.IsEmbedded || AlbionLabHost.CaptureRequested) await StartTrackingAutomaticallyAsync();
 
         _mainWindowViewModel.IsDamageMeterTrackingActive = SettingsController.CurrentSettings.IsDamageMeterTrackingActive;
         _mainWindowViewModel.LoggingBindings.IsTrackingPartyLootOnly = SettingsController.CurrentSettings.IsTrackingPartyLootOnly;
@@ -111,10 +111,13 @@ public class TrackingController : ITrackingController
         }
     }
 
-    public async Task StartTrackingAsync()
+    public Task StartTrackingAsync() { AlbionLabHost.RequestCapture(true); return StartTrackingCoreAsync(); }
+    public Task StartTrackingAutomaticallyAsync() => AlbionLabHost.IsEmbedded && !AlbionLabHost.CaptureRequested ? Task.CompletedTask : StartTrackingCoreAsync();
+    private async Task StartTrackingCoreAsync()
     {
         if (_networkManager?.IsAnySocketActive() ?? false)
         {
+            AlbionLabHost.ReportCapture(true);
             return;
         }
 
@@ -125,6 +128,7 @@ public class TrackingController : ITrackingController
         if (provider == PacketProviderKind.Sockets && !ApplicationCore.IsAppStartedAsAdministrator())
         {
             _mainWindowViewModel.SetErrorBar(Visibility.Visible, LocalizationController.Translation("START_APPLICATION_AS_ADMINISTRATOR"));
+            AlbionLabHost.CaptureError(LocalizationController.Translation("START_APPLICATION_AS_ADMINISTRATOR"));
             return;
         }
 
@@ -144,11 +148,13 @@ public class TrackingController : ITrackingController
                 var userMsg = LocalizationController.Translation("NO_LISTENING_ADAPTERS");
                 Log.Warning("StartTracking failed | provider={Provider} | admin={IsAdmin} | msg={UserMsg}", provider, ApplicationCore.IsAppStartedAsAdministrator(), userMsg);
                 _mainWindowViewModel.SetErrorBar(Visibility.Visible, userMsg);
+                AlbionLabHost.CaptureError(userMsg);
                 StopTracking();
                 return;
             }
 
             _mainWindowViewModel.IsTrackingActive = true;
+            AlbionLabHost.ReportCapture(true);
         }
         catch (Exception ex)
         {
@@ -157,6 +163,7 @@ public class TrackingController : ITrackingController
             Log.Error(ex, "StartTracking failed | provider={Provider} | admin={IsAdmin} | msg={UserMsg}", provider, ApplicationCore.IsAppStartedAsAdministrator(), userMsg);
 
             _mainWindowViewModel.SetErrorBar(Visibility.Visible, userMsg, ex);
+            AlbionLabHost.CaptureError(userMsg);
 
             try
             {
@@ -234,10 +241,14 @@ public class TrackingController : ITrackingController
         return LocalizationController.Translation("PACKET_HANDLER_ERROR_MESSAGE");
     }
 
-    public void StopTracking()
+    public void StopTracking() { AlbionLabHost.RequestCapture(false); StopTrackingCore(); }
+    public void StopTrackingAutomatically() => StopTrackingCore();
+    private void StopTrackingCore()
     {
+        AlbionLabHost.ReportCapture(false);
         if (!_mainWindowViewModel.IsTrackingActive && _networkManager is null)
         {
+            StatisticController.EndSession(DateTime.UtcNow);
             return;
         }
 
@@ -251,6 +262,7 @@ public class TrackingController : ITrackingController
         ClusterController.UnregisterEvents();
 
         _mainWindowViewModel.IsTrackingActive = false;
+        StatisticController.EndSession(DateTime.UtcNow);
 
         Debug.Print("Stopped tracking");
     }
@@ -260,6 +272,7 @@ public class TrackingController : ITrackingController
         CancelLogoutDetection();
         StopTracking();
         DungeonController.PrepareShutdownSaveSnapshot();
+        StatisticController.EndSession(DateTime.UtcNow);
     }
 
     public void BeginLogoutDetection()

@@ -183,6 +183,7 @@ public sealed class StatisticSessionStorage
         return new StatisticEntry
         {
             SessionId = entry.SessionId,
+            AlbionLabId = entry.AlbionLabId,
             OccurredAtUtc = entry.OccurredAtUtc,
             ValueType = entry.ValueType,
             Value = entry.Value,

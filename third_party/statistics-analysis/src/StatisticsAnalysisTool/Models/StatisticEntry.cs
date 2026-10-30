@@ -9,6 +9,7 @@ namespace StatisticsAnalysisTool.Models;
 
 public sealed class StatisticEntry
 {
+    public Guid AlbionLabId { get; set; }
     public Guid SessionId { get; set; }
     public DateTime OccurredAtUtc { get; set; }
     public ValueType ValueType { get; set; }

@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const assert = require('node:assert/strict');
 const { once } = require('node:events');
-async function run(window, updates, folder, shopping, offlineAttempts = [], avalon) {
+async function run(window, updates, folder, shopping, offlineAttempts = [], avalon, sessionServices) {
   window.webContents.setBackgroundThrottling(false);
   const timeout = setTimeout(() => { console.error('Diagnostics timed out'); require('electron').app.exit(1); }, 1500000);
   const errors = [];
@@ -24,13 +24,17 @@ async function run(window, updates, folder, shopping, offlineAttempts = [], aval
   assert.equal(result.actionsInitiallyCollapsed, true);
   assert.equal(result.noDefaultProfitGoal, true);
   assert.equal(result.modes.length, 18, JSON.stringify(errors));
+  if(process.argv.includes('--session-only')) {
+    result.gameSession=await require('./session-diagnostics.cjs').run(window,folder,sessionServices);
+    assert.deepEqual(errors,[]);fs.writeFileSync(path.join(folder,'diagnostics.json'),JSON.stringify({result,errors},null,2));clearTimeout(timeout);return;
+  }
   if(process.argv.includes('--sat-only')) {
     const state=()=>window.webContents.executeJavaScript(`DesktopApp.statistics.action('state')`);
     await window.webContents.executeJavaScript(`DesktopApp.statistics.action('open')`);
     const end=Date.now()+240000;
     let current;
-    do { await new Promise(r=>setTimeout(r,1000));current=await state(); if(!current.running)throw Error(current.message); } while(!/запущена/.test(current.message)&&Date.now()<end);
-    assert.match(current.message,/запущена/);
+    do { await new Promise(r=>setTimeout(r,1000));current=await state(); if(!current.running)throw Error(current.message); } while(!current.ready&&Date.now()<end);
+    assert.equal(current.ready,true);
     const host=require('electron').BaseWindow.getAllWindows().find(w=>w.webContents?.getURL().endsWith('/sat-host.html'));
     assert.ok(host);host.setSize(1100,800);
     await new Promise(r=>setTimeout(r,1000));

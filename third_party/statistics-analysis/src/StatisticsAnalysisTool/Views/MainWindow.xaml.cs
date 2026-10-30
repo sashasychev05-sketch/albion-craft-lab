@@ -73,11 +73,26 @@ public partial class MainWindow
 
     private void CloseButton_Click(object sender, RoutedEventArgs e)
     {
+        if (AlbionLabHost.IsEmbedded && AlbionLabHost.BackgroundMode) { AlbionLabHost.HideInterface(); return; }
         Application.Current?.Shutdown();
+    }
+
+    public void ShowAlbionLabModule(string module)
+    {
+        var index = module switch {
+            "statistics" => 0, "items" => 1, "loot" => 2, "dungeons" => 3, "combat" => 4,
+            "trade" => 5, "gathering" => 6, "crafting" => 7, "party" => 8, "guild" => 9,
+            "storage" => 10, "locations" => 11, "character" => 12, "settings" => 15, _ => 0
+        };
+        if (index < AlbionLabModules.Items.Count) AlbionLabModules.SelectedIndex = index;
     }
 
     private void MainWindow_OnClosing(object sender, EventArgs eventArgs)
     {
+        if (AlbionLabHost.IsEmbedded && AlbionLabHost.BackgroundMode && !AlbionLabHost.IsShuttingDown
+            && eventArgs is System.ComponentModel.CancelEventArgs closing) {
+            closing.Cancel = true; AlbionLabHost.HideInterface(); return;
+        }
         var windowStateForPersistence = _systemTrayService.WindowStateForPersistence;
         Loaded -= MainWindow_OnLoaded;
         _applicationUptimeTimer.Stop();
@@ -107,7 +122,7 @@ public partial class MainWindow
     private async void AlbionGameProcessMonitor_OnGameStarted(object sender, EventArgs eventArgs)
     {
         var settings = SettingsController.CurrentSettings;
-        if (settings.IsOpenWithGameActive)
+        if (settings.IsOpenWithGameActive && !AlbionLabHost.BackgroundMode)
         {
             _systemTrayService.RestoreWindowFromSystemTray();
         }
@@ -121,7 +136,7 @@ public partial class MainWindow
 
         try
         {
-            await ServiceLocator.Resolve<TrackingController>().StartTrackingAsync();
+            await ServiceLocator.Resolve<TrackingController>().StartTrackingAutomaticallyAsync();
         }
         catch (Exception exception)
         {
@@ -138,7 +153,7 @@ public partial class MainWindow
         {
             try
             {
-                ServiceLocator.Resolve<TrackingController>().StopTracking();
+                ServiceLocator.Resolve<TrackingController>().StopTrackingAutomatically();
             }
             catch (Exception exception)
             {

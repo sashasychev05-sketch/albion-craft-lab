@@ -706,6 +706,7 @@ public class StatisticController
                 characterName,
                 AppDataPaths.ActiveUserDataServerLocation,
                 nowUtc);
+            AlbionLabSessionBridge.Session(session);
             isNewSession = previousSessionId != session.Id;
 
             if (isNewSession)
@@ -729,8 +730,10 @@ public class StatisticController
         bool wasEnded;
         lock (_syncRoot)
         {
-            var activeSessionId = _dashboardStatistics.GetActiveSession()?.Id;
+            var endingSession = _dashboardStatistics.GetActiveSession();
+            var activeSessionId = endingSession?.Id;
             wasEnded = _dashboardStatistics.EndActiveSession(endedAtUtc);
+            if (wasEnded) AlbionLabSessionBridge.Session(endingSession);
 
             if (wasEnded && activeSessionId.HasValue)
             {
@@ -2233,6 +2236,9 @@ public class StatisticController
             _dashboardStatistics = loadedStatistics;
             _statisticsAggregator = new DashboardStatisticsAggregator(loadedStatistics);
             _dirtySessionVersions.Clear();
+            AlbionLabSessionBridge.Import(loadedStatistics);
+            if (AlbionLabHost.IsEmbedded)
+                foreach (var session in loadedStatistics.Sessions) MarkSessionDirtyInternal(session.Id);
         }
 
         if (_mainWindowViewModel.MainStatusBindings.IsInGame)

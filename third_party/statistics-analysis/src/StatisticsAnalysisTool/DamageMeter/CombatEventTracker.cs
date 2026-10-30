@@ -233,6 +233,8 @@ public sealed class CombatEventTracker(TrackingController trackingController)
 
             var participant = GetAggregationParticipant(valueType, sourceObjectId, targetObjectId, sourcePlayer, targetPlayer, sourceMob, targetMob);
             _activeCombatEvent.AddContribution(valueType, sourceObjectId, targetObjectId, targetMob?.MobInstanceId, value, causingSpellIndex, participant);
+            StatisticsAnalysisTool.Common.AlbionLabSessionBridge.Combat(trackingController, valueType.ToString(), sourceObjectId,
+                targetObjectId, value, causingSpellIndex, contentType.ToString(), _activeCombatEvent.CombatEventId);
 
             if (valueType == CombatEventValueType.Damage && targetMob != null)
             {

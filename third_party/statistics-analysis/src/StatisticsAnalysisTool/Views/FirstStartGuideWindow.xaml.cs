@@ -33,6 +33,7 @@ public partial class FirstStartGuideWindow
 
     private void Hotbar_MouseDown(object sender, MouseButtonEventArgs e)
     {
+        if (Common.AlbionLabHost.IsEmbedded) return;
         if (e.ChangedButton == MouseButton.Left)
         {
             DragMove();

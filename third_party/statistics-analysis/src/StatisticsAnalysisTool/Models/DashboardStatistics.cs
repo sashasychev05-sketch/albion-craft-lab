@@ -1,4 +1,5 @@
 using StatisticsAnalysisTool.Enumerations;
+using StatisticsAnalysisTool.Common;
 using StatisticsAnalysisTool.Properties;
 using System;
 using System.Collections.Generic;
@@ -46,6 +47,7 @@ public class DashboardStatistics
             if (activeSession != null)
             {
                 activeSession.EndedAtUtc = startedAtUtc;
+                AlbionLabSessionBridge.Session(activeSession);
             }
 
             var session = new StatisticSession
@@ -97,6 +99,7 @@ public class DashboardStatistics
         lock (_syncRoot)
         {
             Entries.Add(entry);
+            AlbionLabSessionBridge.Statistic(entry);
             RemoveExpiredDataIfRequiredInternal(entry.OccurredAtUtc);
         }
     }
@@ -130,6 +133,7 @@ public class DashboardStatistics
             }
 
             killEntry.CombatLootValue += value;
+            AlbionLabSessionBridge.Statistic(killEntry);
             return true;
         }
     }
@@ -159,6 +163,7 @@ public class DashboardStatistics
                     .Select(x => new StatisticEntry
                     {
                         SessionId = x.SessionId,
+                        AlbionLabId = x.AlbionLabId,
                         OccurredAtUtc = x.OccurredAtUtc,
                         ValueType = x.ValueType,
                         Value = x.Value,

@@ -1,6 +1,7 @@
 'use strict';
 const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('DesktopApp', {
+  session:{action:(action,args)=>ipcRenderer.invoke('session:action',action,args),onChanged:callback=>{const handler=(_event,state)=>callback(state);ipcRenderer.on('session:changed',handler);return()=>ipcRenderer.removeListener('session:changed',handler);}},
   statistics:{action:action=>ipcRenderer.invoke('statistics:action',action),onState:callback=>{const handler=(_event,state)=>callback(state);ipcRenderer.on('sat:state',handler);return ()=>ipcRenderer.removeListener('sat:state',handler);}},
   marketScanner: {action:(action,arg)=>ipcRenderer.invoke('market-scanner:action',action,arg),onChanged:callback=>{const listener=(_event,state)=>callback(state);ipcRenderer.on('market-scanner:changed',listener);return ()=>ipcRenderer.removeListener('market-scanner:changed',listener);}},
   avalon: {
