@@ -14,7 +14,7 @@
  <article class="session-card"><div class="label">Стоимость добычи</div><div class="value" data-metric="LootValue">—</div><small>Оценка стоимости из SAT</small></article>
  <article class="session-card"><div class="label">Могущество / благосклонность</div><div class="value" data-might>—</div><small data-combat-result>Убийства · смерти</small></article></div>
  <div class="session-charts"><div class="session-chart"><h3>Слава по минутам</h3><div data-chart="fame"></div><p>Последние 240 минут с записанными событиями</p></div><div class="session-chart"><h3>Личный урон по минутам</h3><div data-chart="damage"></div><p>Итоги сохраняются при смене локаций и боёв</p></div></div>
- <details open><summary>Последние события</summary><div class="session-table-wrap"><table><thead><tr><th>Время</th><th>Событие</th><th>Значение</th></tr></thead><tbody data-events></tbody></table></div></details>
+ <details open><summary>Последние события</summary><div class="event-controls"><label>Тип события<select data-event-type><option value="all">Все события</option><option value="combat">Бой</option><option value="item">Предметы</option><option value="location">Переходы</option></select></label><button type="button" data-pause-events aria-pressed="false">Приостановить список</button></div><div class="session-table-wrap"><table><thead><tr><th>Время</th><th>Событие</th><th>Значение</th></tr></thead><tbody data-events></tbody></table></div></details>
  <details><summary>Все показатели сессии</summary><div class="session-table-wrap"><table><tbody data-metrics></tbody></table></div></details>
  <details><summary>Группа · текущее состояние SAT</summary><div class="session-table-wrap"><table><thead><tr><th>Участник</th><th>Урон</th><th>Лечение</th></tr></thead><tbody data-party></tbody></table></div></details>
  <details><summary>Все разделы и сохранённые данные</summary><div class="modules" data-modules></div></details>
@@ -28,10 +28,33 @@
  function itemIcon(item,entry){if(!item?.id)return '';const q=({Normal:1,Good:2,Outstanding:3,Excellent:4,Masterpiece:5})[entry?.itemQuality]||Number(entry?.itemQuality)||1;const local=window.ItemIcons?.image(item.id,q,32)||'';if(!window.ItemIcons?.source(item.id).placeholder)return local;return '<span class="native-item-icon">'+local+'<img loading="lazy" alt="" src="session-item/'+encodeURIComponent(item.id)+'?quality='+q+'"></span>';}
  dialog.addEventListener('error',event=>{if(event.target.matches?.('.native-item-icon img'))event.target.remove();},true);
  function eventRow(record){const d=record.data||{},e=d.entry||{};let title='',detail='',value='—',icon='';if(record.kind==='stat'){title=d.item?.name||F.labels[e.valueType]||e.valueType;detail=d.item?.id?(F.labels[e.valueType]||'Добыча')+' · '+F.num(e.itemQuantity)+' шт.':e.combatOpponentName||e.mobUniqueName||e.lootAreaIndex||'';icon=itemIcon(d.item,e);value=F.num(e.value);}else if(record.kind==='combat'){title=({Damage:'Урон',Heal:'Лечение',TakenDamage:'Полученный урон',Overheal:'Избыточное лечение'})[d.metric]||d.metric;detail=(d.source||'Существо')+' → '+(d.target||'Цель')+(d.sourceLocal?' · вы':'');value=F.num(d.value);}else if(record.kind==='location'){title='Переход в локацию';detail=d.name||d.id;}else{title='Событие';detail=d.message||record.kind;}return '<tr><td>'+F.esc(new Date(record.time).toLocaleTimeString('ru-RU'))+'</td><td><div class="event-name">'+icon+'<span class="event-copy"><span>'+F.esc(title)+'</span><small>'+F.esc(detail)+'</small></span></div></td><td>'+F.esc(value)+'</td></tr>';}
+ let frozenEvents=null,frozenScope='';
+ function renderEvents(data){
+   const scope=JSON.stringify(filter());
+   if(frozenScope!==scope)frozenEvents=null;
+   const paused=frozenEvents!==null;
+   const control=el('[data-pause-events]');
+   control.textContent=paused?'Продолжить обновление':'Приостановить список';
+   control.setAttribute('aria-pressed',String(paused));
+   const type=el('[data-event-type]').value;
+   const records=(frozenEvents||data.events||[]).filter(event=>
+     type==='all'||(type==='item'?Boolean(event.data?.item):event.kind===type));
+   const key=JSON.stringify([type,records]);
+   if(key===listKey)return;
+   listKey=key;
+   el('[data-events]').innerHTML=records.map(eventRow).join('')||
+     '<tr><td colspan="3" class="empty">'+(type==='all'?'Пока нет событий.':'В последних событиях нет записей этого типа.')+'</td></tr>';
+ }
+ el('[data-event-type]').onchange=()=>renderEvents(state?.data||{});
+ el('[data-pause-events]').onclick=()=>{
+   frozenScope=JSON.stringify(filter());
+   frozenEvents=frozenEvents===null?(state?.data?.events||[]):null;
+   renderEvents(state?.data||{});
+ };
  function render(snapshot){state=snapshot;const data=state.data||{},m=data.metrics||{},has=data.sessionCount>0;set('[data-status]',F.status(state));const warning=state.error||state.storage?.error||state.engine?.warning;el('[data-warning]').hidden=!warning;if(warning)set('[data-warning]',warning);set('[data-capture]',state.settings?.enabled?'Выключить сбор':'Включить сбор');el('[data-new]').disabled=!F.live(state);for(const target of dialog.querySelectorAll('[data-metric]'))target.textContent=has?F.num(m[target.dataset.metric]||0):'—';set('[data-might]',has?F.num(m.Might||0)+' / '+F.num(m.Favor||0):'—');set('[data-fame-rate]',data.famePerHour===null?'Средняя скорость появится после минуты':F.num(data.famePerHour)+' славы / ч · среднее');set('[data-dps]',F.num(data.dps10)+' урона/с · последние 10 с');set('[data-hps]',F.num(data.hps10)+' лечения/с · последние 10 с');set('[data-silver-rate]',data.silverPerHour===null?'По событиям получения серебра':F.num(data.silverPerHour)+' серебра / ч · среднее');set('[data-combat-result]','Убийства: '+F.num(m.PlayerKill||0)+' · смерти: '+F.num(m.PlayerDeath||0));set('[data-duration]',F.duration(data.durationSeconds)+' · сессий: '+F.num(data.sessionCount||0));set('[data-scope]',el('[data-session]').selectedOptions[0]?.textContent||'Статистика');
  const sessions=[['current','Текущая сессия'],['all','Вся история'],...(data.sessions||[]).map(s=>[s.id,s.character+' · '+s.server+' · '+new Date(s.start).toLocaleString('ru-RU')])];if(filter().sessionId&&!sessions.some(([id])=>id===filter().sessionId))sessions.push([filter().sessionId,'Выбранная сессия']);options(el('[data-session]'),sessions);options(el('[data-character]'),[['all','Все персонажи'],...[...new Set((data.identities||[]).map(i=>i.character))].map(c=>[c,c])]);
  el('[data-chart="fame"]').innerHTML=chart(data.timeline||[],'fame','#e9cb7d');el('[data-chart="damage"]').innerHTML=chart(data.timeline||[],'damage','#edb17f');
- const key=JSON.stringify((data.events||[]).map(e=>[e.id,e.updatedAtUtc,e.data]));if(key!==listKey){listKey=key;el('[data-events]').innerHTML=(data.events||[]).map(eventRow).join('')||'<tr><td colspan="3" class="empty">События появятся после подключения к игровой сессии.</td></tr>';}
+ renderEvents(data);
  el('[data-metrics]').innerHTML=Object.entries(F.labels).map(([key,label])=>'<tr><td>'+F.esc(label)+'</td><td>'+F.num(m[key]||0)+'</td></tr>').join('');el('[data-party]').innerHTML=(data.context?.party||[]).map(p=>'<tr><td>'+F.esc(p.name)+'</td><td>'+F.num(p.damage)+'</td><td>'+F.num(p.healing)+'</td></tr>').join('')||'<tr><td colspan="3" class="empty">Группа пока не обнаружена.</td></tr>';
  el('[data-modules]').innerHTML=Object.entries(F.modules).map(([id,label])=>{const files=(data.modules||[]).filter(m=>m.module===id).reduce((n,m)=>n+m.files,0);return '<button data-tool="'+id+'">'+F.esc(label)+'<small>'+files+' файлов истории · открыть инструменты</small></button>';}).join('');
  }
@@ -41,7 +64,7 @@
  el('[data-close]').onclick=()=>dialog.close();dialog.addEventListener('close',()=>{clearInterval(timer);timer=null;});
  el('[data-capture]').onclick=async()=>{const control=el('[data-capture]');control.disabled=true;try{await action(state?.settings?.enabled?'stop':'start');}finally{control.disabled=false;}};
  el('[data-overlay]').onclick=()=>action('overlay');el('[data-new]').onclick=()=>action('new-session');
- for(const select of dialog.querySelectorAll('select'))select.onchange=refresh;
+ for(const select of dialog.querySelectorAll('.session-filters select'))select.onchange=refresh;
  dialog.addEventListener('click',event=>{const target=event.target.closest('[data-tool]');if(target)action('tools',{module:target.dataset.tool});});
  api.onChanged(()=>{if(dialog.open)refresh();});
 })();
