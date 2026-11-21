@@ -90,7 +90,12 @@ else {
       { label: 'Вид', submenu: [{ label: 'Увеличить', role: 'zoomIn' }, { label: 'Уменьшить', role: 'zoomOut' }, { label: 'Исходный масштаб', role: 'resetZoom' }, { label: 'На весь экран', role: 'togglefullscreen' }] }
     ]));
     shopping = require('./shopping-window.cjs').createShoppingWindow({ BrowserWindow, ipcMain, screen, app, getMain: () => window, origin: ORIGIN, diagnostic: !!diagnosticFolder });
-    avalon = require('./avalon-controller.cjs').createAvalon({app,ipcMain,dialog,BrowserWindow,screen,desktopCapturer,globalShortcut,net,getMain:()=>window,origin:ORIGIN,diagnostic:!!diagnosticFolder});
+    avalon = require('./avalon-controller.cjs').createAvalon({app,ipcMain,dialog,BrowserWindow,screen,desktopCapturer,globalShortcut,net,getSatLocation:async(server)=>{
+      if (!statistics?.snapshot().captureActive) return null;
+      const context=await gameSession.request("context");
+      const region={Europe:"europe",America:"west",Asia:"east"}[context?.server];
+      return context?.tracking && context.inGame && region===server ? context.location : null;
+    },getMain:()=>window,origin:ORIGIN,diagnostic:!!diagnosticFolder});
     marketScanner=require('./market-scanner.cjs').createScanner({app,dialog,notify:state=>{if(window&&!window.isDestroyed())window.webContents.send('market-scanner:changed',state);marketOverlay?.update(state);}});
     gameSession=require('./game-session.cjs').createGameSession({app,notify:sessionChanged});
     sessionIcons=require('./session-icons.cjs').createSessionIcons({app,net,offline:!!diagnosticFolder&&process.argv.includes('--offline-network')});

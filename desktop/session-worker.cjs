@@ -55,7 +55,8 @@ parentPort.on('message',message=>{
  if(message.action==='wake'){nextJournals=0;pump();return;}
  try{
   let result;
-  if(message.action==='query')result=store.summary(filter(message.args));
+  if(message.action==='context')result=store.context();
+  else if(message.action==='query')result=store.summary(filter(message.args));
   else if(message.action==='refresh'){journalSizes.clear();nextDiscovery=0;pump();result=true;}
   else if(message.action==='documents')result=store.documents(message.args?.module,message.args?.server||'');
   else if(message.action==='document')result=store.readDocument(message.args?.path);
