@@ -53,6 +53,15 @@ function changed(reload=false){render();save();if(reload)schedule()}
 $('trans-category').onchange=()=>{s.category=$('trans-category').value;s.source='auto';fillTargets();changed(true)};$('trans-tier').onchange=()=>{fillEnchantment(X.resources[s.target]?.ench);changed(true)};$('trans-enchantment').onchange=()=>{s.target=$('trans-enchantment').value;fillSources();changed(true)};
 $('trans-source').onchange=()=>{s.source=$('trans-source').value;changed()};$('trans-city').onchange=()=>{s.city=$('trans-city').value;changed()};$('trans-quantity').oninput=()=>{s.quantity=Math.max(0,Math.floor(Number($('trans-quantity').value)||0));changed()};
 for(const [id,target] of [['trans-buy-price',false],['trans-target-price',true]])$(id).oninput=()=>{const resource=target?s.target:last?.source;if(!resource)return;if(!target&&s.source==='auto'){s.source=resource;$('trans-source').value=resource}if($(id).value==='')delete s.overrides[key(resource)];else s.overrides[key(resource)]=Math.max(0,Number($(id).value)||0);changed()};
+for(const [field,action] of [['trans-buy-price','buy'],['trans-target-price','buy'],['trans-sell-price','sell']]){
+ $(field).addEventListener('change',event=>{
+  const selling=action==='sell',id=field==='trans-buy-price'?last?.source:s.target;
+  if(!id||!(Number(event.target.value)>0))return;
+  window.PriceBook?.record(s.server,id,selling?s.sellCity:s.city,1,selling&&s.saleMode==='instant'?'bid':action,event.target.value);
+  if(selling)delete s.salePrices[saleKey()];else delete s.overrides[key(id)];
+  changed();
+ });
+}
 $('trans-auto-prices').onclick=()=>{for(const id of T.ancestors(s.target,X))delete s.overrides[key(id)];delete s.salePrices[saleKey()];changed()};
 panel.addEventListener('click',e=>{const a=e.target.closest('[data-trans-source]'),b=e.target.closest('[data-trans-city]');if(a){s.source=a.dataset.transSource;$('trans-source').value=s.source;changed()}if(b){s.city=b.dataset.transCity;$('trans-city').value=s.city;changed()}});
 function schedule(){clearTimeout(timer);seq++;controller?.abort();loading=false;$('refresh').disabled=false;$('refresh').textContent='↻ Обновить цены';timer=setTimeout(()=>load(false),350)}

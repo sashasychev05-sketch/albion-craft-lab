@@ -21,8 +21,9 @@ function discover(){
 function readJournal(filename,drain){
  try{
   const stat=fs.lstatSync(filename);if(stat.isSymbolicLink()||journalSizes.get(filename)===stat.size)return;
-  let consumed=store.importJournal(filename);
-  if(drain)while(consumed)consumed=store.importJournal(filename);
+  const importChunk=()=>store.importJournal(filename,undefined,count=>report(Error('SAT: пропущено повреждённых записей: '+count)));
+  let consumed=importChunk();
+  if(drain)while(consumed)consumed=importChunk();
   if(!consumed)journalSizes.set(filename,stat.size);
  }catch(error){if(error.code!=='ENOENT')report(error);}
 }

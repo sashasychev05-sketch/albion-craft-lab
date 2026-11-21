@@ -42,3 +42,14 @@ test('item quantities, quality, identifiers and original event details remain av
  const record=stat('loot',500,'s1','LootValue');record.data.entry.itemIndex=123;record.data.entry.itemQuantity=4;record.data.entry.itemQuality='Excellent';record.data.item={id:'T6_BAG@2',name:'Сумка'};
  db.ingest([session(),record]);const x=db.summary();assert.equal(x.metrics.LootValue,500);assert.deepEqual(x.events[0].data.item,record.data.item);assert.equal(x.events[0].data.entry.itemQuantity,4);
 }));
+
+test('journal import skips malformed and invalid complete records and resumes after the cursor',()=>fixture((db,folder)=>{
+ const file=path.join(folder,'events-recovery.jsonl'),encode=value=>JSON.stringify(value)+'\n';
+ fs.writeFileSync(file,encode(session())+encode(stat('first'))+'{invalid\n'+encode({...stat('invalid'),time:'bad'})+encode(stat('later')));
+ const invalid=[];
+ db.importJournal(file,undefined,count=>invalid.push(count));
+ assert.deepEqual(invalid,[2]);
+ assert.deepEqual(db.summary({}).events.map(event=>event.id).sort(),['first','later']);
+ assert.equal(db.importJournal(file,undefined,count=>invalid.push(count)),0);
+ assert.deepEqual(invalid,[2]);
+}));

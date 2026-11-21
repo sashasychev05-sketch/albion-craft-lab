@@ -16,7 +16,7 @@ $('roads-sat-location').onclick=async()=>{
  try {
   const snapshot=await window.DesktopApp?.session?.action('query',{sessionId:'current'});
   const context=snapshot?.data?.context;
-  if(!snapshot?.engine?.captureActive||!context?.inGame)throw Error('Включите сбор в разделе «Игровая сессия» и смените локацию в игре.');
+  if(!snapshot?.engine?.captureActive||!context?.inGame||!(context.at>=snapshot.engine.captureStartedAt))throw Error('Включите сбор в разделе «Игровая сессия» и смените локацию в игре.');
   const region={Europe:'europe',America:'west',Asia:'east'}[context.server];
   if(region!==server())throw Error('Выберите сервер текущей игровой сессии.');
   const zone=zones().find(z=>String(z.id)===String(context.locationId))||zoneByName(context.location);

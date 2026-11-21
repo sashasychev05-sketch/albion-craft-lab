@@ -1,11 +1,27 @@
 const {test}=require('node:test'),assert=require('node:assert/strict'),vm=require('node:vm'),fs=require('node:fs');
-test('scanned asks and bids feed the existing price resolver with server, quality, TTL and manual precedence',()=>{
- let change,manual=null;const node=()=>({style:{},querySelector(){return node();},append(){},showModal(){},close(){}});const book={get:()=>manual,resolve:()=>({price:9})};
+const {create}=require('../dist/price-book.js');
+test('scanner saves city prices and only newer observations replace the last saved price',()=>{
+ let change,now=Date.now(),raw;
+ const storage={getItem:()=>raw,setItem:(_,value)=>{raw=value;}},book=create(storage,()=>now);
+ const node=()=>({style:{},querySelector(){return node();},append(){},showModal(){},close(){}});
  const window={PriceBook:book,DesktopApp:{marketScanner:{action:async()=>({quotes:[],orders:0}),onChanged:cb=>{change=cb;}}}};
  const document={createElement:node,body:{append(){}},querySelector:()=>node(),dispatchEvent(){}};
  vm.runInNewContext(fs.readFileSync(require.resolve('../dist/market-scanner.js'),'utf8'),{window,document,Date,Event:class{},setInterval(){}});
- change({quotes:[{server:'europe',item:'T4_BAG',city:'Caerleon',quality:1,ask:250,bid:200,askTime:Date.now(),bidTime:Date.now()}],orders:2});
- assert.equal(book.resolve('europe','T4_BAG','Caerleon',1,'buy').price,250);assert.equal(book.resolve('europe','T4_BAG','Caerleon',1,'bid').price,200);assert.equal(book.resolve('east','T4_BAG','Caerleon',1,'buy').price,9);assert.equal(book.resolve('europe','T4_BAG','Caerleon',2,'buy').price,9);
- manual={source:'manual'};assert.equal(book.resolve('europe','T4_BAG','Caerleon',1,'buy').price,9);manual=null;
- change({quotes:[{server:'europe',item:'T4_BAG',city:'Caerleon',quality:1,ask:250,askTime:Date.now()-7200001}],orders:1});assert.equal(book.resolve('europe','T4_BAG','Caerleon',1,'buy').price,9);
+ const address=['europe','T4_BAG','Caerleon',1];
+ book.set(...address,'sell',310);
+ const send=(ask,askTime)=>change({quotes:[{server:address[0],item:address[1],city:address[2],quality:1,ask,bid:200,askTime,bidTime:askTime}],orders:2});
+ send(250,now-1);
+ assert.equal(book.get(...address,'sell').price,310);
+ now+=1000;
+ send(275,now);
+ assert.equal(book.get(...address,'sell').price,275);
+ assert.equal(book.get(...address,'bid').price,200);
+ assert.equal(book.get('east',...address.slice(1),'sell'),null);
+ assert.equal(book.get(...address.slice(0,3),2,'sell'),null);
+ book.set(...address,'sell',330);
+ send(500,now-5);
+ assert.equal(create(storage).get(...address,'sell').price,330);
+ now+=1000;
+ book.observeServer('europe',[{item_id:'T4_BAG',city:'Caerleon',quality:1,sell_price_min:340,sell_price_min_date:new Date(now).toISOString()}],quote=>quote);
+ assert.equal(book.get(...address,'sell').price,340);
 });

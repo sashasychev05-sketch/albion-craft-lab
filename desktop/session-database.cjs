@@ -82,7 +82,7 @@ class SessionDatabase {
       this.db.exec('COMMIT'); this.version++;
     } catch (error) { this.db.exec('ROLLBACK'); throw error; }
   }
-  importJournal(filename, maxBytes=1024*1024) {
+  importJournal(filename, maxBytes=1024*1024, onInvalid=()=>{}) {
     const stat = fs.lstatSync(filename); if (!stat.isFile() || stat.isSymbolicLink()) return 0;
     let position = this.db.prepare('SELECT position FROM cursors WHERE file=?').get(filename)?.position || 0;
     if (position>stat.size) position=0;
@@ -90,8 +90,22 @@ class SessionDatabase {
     const length=Math.min(maxBytes,stat.size-position), buffer=Buffer.alloc(length), fd=fs.openSync(filename,'r');
     let read; try { read=fs.readSync(fd,buffer,0,length,position); } finally { fs.closeSync(fd); }
     const end=buffer.subarray(0,read).lastIndexOf(10); if (end<0) return 0;
-    const records=buffer.subarray(0,end).toString('utf8').split('\n').filter(Boolean).map(line=>JSON.parse(line));
+    const records=[];
+    let invalid=0;
+    for(const line of buffer.subarray(0,end).toString('utf8').split('\n')){
+      if(!line.trim())continue;
+      try {
+        const record=JSON.parse(line);
+        if(!record||typeof record.id!=='string'||record.id.length>200||typeof record.kind!=='string'||time(record.time)===null)throw Error('Invalid record');
+        if(record.kind==='session'){
+          const data=record.data||{},start=time(data.startedAtUtc),end=time(data.endedAtUtc);
+          if(!data.id||start===null||(end!==null&&end<start))throw Error('Invalid session');
+        }
+        records.push(record);
+      } catch { invalid++; }
+    }
     this.ingest(records,{file:filename,position:position+end+1});
+    if(invalid)onInvalid(invalid);
     return end+1;
   }
   context() { const row=this.db.prepare("SELECT data FROM state WHERE key='context'").get(); return row?JSON.parse(row.data):null; }

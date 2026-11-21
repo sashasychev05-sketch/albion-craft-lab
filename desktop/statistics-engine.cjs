@@ -3,10 +3,10 @@ const path=require('node:path'),fs=require('node:fs'),{spawn}=require('node:chil
 const {StringDecoder}=require('node:string_decoder');
 function createSatHost({app,BaseWindow,WebContentsView,origin,notify=()=>{},onData=()=>{},spawnProcess=spawn,executablePath}){
   let host=null,view=null,child=null,launch=null,stopping=null;
-  let ready=false,setup=false,wantVisible=false,cancelled=false,expectedExit=false,warning=null,lastHeartbeat=null,selectedModule=null,captureWanted=true,captureActive=false;
+  let ready=false,setup=false,wantVisible=false,cancelled=false,expectedExit=false,warning=null,lastHeartbeat=null,selectedModule=null,captureWanted=true,captureActive=false,captureStartedAt=null;
   let message='Сбор данных выключен';
   const executable=()=>executablePath||(app.isPackaged?path.join(process.resourcesPath,'statistics-analysis','StatisticsAnalysisTool.exe'):path.join(__dirname,'..','work','sat-publish','StatisticsAnalysisTool.exe'));
-  const snapshot=()=>({running:!!child,starting:!!launch&&!ready,ready,setup,captureRequested:captureWanted,captureActive,visible:!!host&&!host.isDestroyed()&&host.isVisible(),warning,lastHeartbeat,message,available:fs.existsSync(executable())});
+  const snapshot=()=>({running:!!child,starting:!!launch&&!ready,ready,setup,captureRequested:captureWanted,captureActive,captureStartedAt,visible:!!host&&!host.isDestroyed()&&host.isVisible(),warning,lastHeartbeat,message,available:fs.existsSync(executable())});
   function emit(event,extra={}){const state={...snapshot(),event,...extra};notify(state);if(host&&!host.isDestroyed())view.webContents.send('sat:state',state);}
   function command(value){try{child?.stdin.write(value+'\n');}catch(error){warning=error.message;emit('error');}}
   function hide(){wantVisible=false;command('hide-ui');if(host&&!host.isDestroyed())host.hide();emit('visibility');}
@@ -45,7 +45,7 @@ function createSatHost({app,BaseWindow,WebContentsView,origin,notify=()=>{},onDa
         if(event.type==='setup-cancelled'){message='Первичная настройка не завершена';emit('setup-cancelled');}
         if(event.type==='ready'){ready=true;setup=false;fit();message='Сборщик запущен';if(wantVisible){win.show();command('show-ui');if(selectedModule)command('tab:'+selectedModule);}else win.hide();emit('ready');}
         if(event.type==='session-data')onData();
-        if(event.type==='capture-state'){captureActive=event.active===true;captureWanted=event.requested===true;emit('capture-state');}
+        if(event.type==='capture-state'){if(event.active===true&&!captureActive)captureStartedAt=Date.now();captureActive=event.active===true;if(!captureActive)captureStartedAt=null;captureWanted=event.requested===true;emit('capture-state');}
         if(event.type==='capture-error'){warning=String(event.message||'Не удалось включить захват');emit('error');}
         if(event.type==='heartbeat')emit('heartbeat');
         if(event.type==='ui-hidden')hide();
@@ -55,7 +55,7 @@ function createSatHost({app,BaseWindow,WebContentsView,origin,notify=()=>{},onDa
     active.stderr.on('data',()=>{});
     function finish(code,error){
       if(child!==active)return;
-      child=null;ready=false;setup=false;captureActive=false;
+      child=null;ready=false;setup=false;captureActive=false;captureStartedAt=null;
       if(error||code){warning=error?.message||'Сборщик завершился с ошибкой';message='Сбор данных остановлен с ошибкой';}
       else if(message!=='Первичная настройка не завершена')message='Сбор данных выключен';
       if(!win.isDestroyed())win.destroy();onData();emit('exit',{expected:expectedExit});
