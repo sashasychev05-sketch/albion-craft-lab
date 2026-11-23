@@ -4,9 +4,11 @@ let watched='europe',session,last='';
 function engine(){if(!BatchCards.store)throw Error('Карточки недоступны. Проверьте сообщение в основном окне.');return session||(session=ShoppingListMath.session(BatchCards.store));}
 function state(server){return {...engine().snapshot(server),canUndo:BatchOperationsUI.hasUndo(server)};}
 function changed(){try{const next=state(watched),text=JSON.stringify(next);if(text!==last){last=text;bridge.changed(next);}}catch(e){bridge.changed({server:watched,groups:[],canUndo:false,error:e.message});}}
-bridge.onRequest(request=>{
+bridge.onRequest(async request=>{
  try{
-  const p=request.payload||{};if(!['europe','west','east'].includes(p.server))throw Error('Неизвестный сервер.');watched=p.server;
+  const p=request.payload||{};
+  if(request.action.startsWith('play-')){const value=await PlayHost.action(request.action,p);bridge.respond({id:request.id,ok:true,value});return;}
+  if(!['europe','west','east'].includes(p.server))throw Error('Неизвестный сервер.');watched=p.server;
   if(request.action==='purchase'||request.action==='order'){const receipt=engine()[request.action](p);BatchOperationsUI.record(receipt,request.action==='order'?'Размещение ордеров из мини-окна сохранено.':'Покупка из мини-окна сохранена в партиях.');}
   else if(request.action==='undo')BatchOperationsUI.undo(p.server);
   else if(request.action!=='state')throw Error('Неизвестное действие.');

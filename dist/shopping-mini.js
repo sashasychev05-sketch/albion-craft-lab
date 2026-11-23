@@ -27,7 +27,7 @@ function paintEditor(){
  out.classList.toggle('stale',stale);if(stale){out.textContent='Остаток изменился. Проверьте его и отредактируйте количество заново.';$('mini-quantity').setAttribute('aria-invalid','true');}else{out.textContent='Доступно: '+fmt(maximum)+' шт.';$('mini-quantity').removeAttribute('aria-invalid');}
 }
 function openEditor(key){const group=state.groups.find(g=>g.key===key);if(!group)return;editor={server,key,token:group.token,mode:'purchase'};$('mini-quantity').value='';$('mini-editor').showModal();paintEditor();$('mini-quantity').focus();}
-function accept(next){if(next.switchServer&&next.server!==server){server=next.server;$('mini-server').value=server;sequence++;busy=false;cityReady=false;page=0;$('mini-editor').close();editor=null;message('');}if(next.server!==server)return;state=next;windowState(next.window);render();if(next.error)message(next.error,true);}
+function accept(next){if(next.page)window.PlayPanel?.select(next.page);if(next.switchServer&&next.server!==server){server=next.server;$('mini-server').value=server;sequence++;busy=false;cityReady=false;page=0;$('mini-editor').close();editor=null;message('');}if(next.server!==server)return;state=next;windowState(next.window);render();if(next.error)message(next.error,true);}
 async function command(action,payload={}){
  if(busy)return;const request=++sequence,source=server;busy=true;render();
  try{const next=await api.command({action,server:source,...payload});if(request!==sequence||source!==server)return;accept(next);return next;}
@@ -60,6 +60,6 @@ $('mini-settings').onclick=()=>$('mini-options').showModal();$('mini-options-clo
 $('mini-corner').onchange=()=>{if($('mini-corner').value)control('corner',$('mini-corner').value);$('mini-corner').value='';};
 $('mini-opacity').oninput=()=>backgroundOpacity(Number($('mini-opacity').value)/100);$('mini-opacity').onchange=()=>control('opacity',Number($('mini-opacity').value)/100);
 new ResizeObserver(()=>{cancelAnimationFrame(resizeFrame);resizeFrame=requestAnimationFrame(render);}).observe($('mini-list'));
-api.window({action:'state'}).then(async value=>{server=value.server;$('mini-server').value=server;windowState(value);await command('state');}).catch(e=>message(e.message,true));
+api.window({action:'state'}).then(async value=>{window.PlayPanel?.select(value.page);server=value.server;$('mini-server').value=server;windowState(value);await command('state');}).catch(e=>message(e.message,true));
 window.ShoppingMini={snapshot:()=>JSON.parse(JSON.stringify(state)),busy:()=>busy,pagination:()=>({page,pageCount,visible:$('mini-list').querySelectorAll('.mini-row').length})};
 })();

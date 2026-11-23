@@ -22,11 +22,14 @@ function createShoppingWindow({BrowserWindow,ipcMain,screen,app,getMain,origin,d
  }
  function rejectPending(){for(const entry of pending.values()){clearTimeout(entry.timeout);entry.reject(Error('Основное приложение перезагружается. Повторите действие.'));}pending.clear();}
  function showMain(){const main=getMain();if(alive(main)){if(main.isMinimized())main.restore();if(!diagnostic){main.show();main.focus();}hiddenMain=false;}}
- async function open(server){
+ let initialPage='shopping';
+ async function open(server,page='shopping'){
+  if(!['craft','roads','shopping'].includes(page))throw Error('Неизвестный раздел.');
+  initialPage=page;
   if(!servers.includes(server))throw Error('Неизвестный сервер.');viewServer=server;
-  if(alive(mini)){if(!diagnostic){mini.show();mini.focus();}emit(await ask('state',{server:viewServer}),true);return windowState();}
+  if(alive(mini)){if(!diagnostic){mini.show();mini.focus();}emit({...await ask('state',{server:viewServer}),page},true);return windowState();}
   settings=read();compact=false;normalBounds={...settings.bounds};
-  mini=new BrowserWindow({...settings.bounds,minWidth:300,minHeight:400,maxWidth:Math.max(...areas().map(a=>a.width)),maxHeight:Math.max(...areas().map(a=>a.height)),frame:false,thickFrame:false,show:false,transparent:true,hasShadow:false,alwaysOnTop:settings.pinned,skipTaskbar:false,minimizable:false,maximizable:false,fullscreenable:false,title:'Закупки · Albion Lab',backgroundColor:'#00000000',icon:path.join(__dirname,'assets','icon.ico'),webPreferences:{preload:path.join(__dirname,'shopping-preload.cjs'),nodeIntegration:false,contextIsolation:true,sandbox:true,webSecurity:true,backgroundThrottling:false}});
+  mini=new BrowserWindow({...settings.bounds,minWidth:300,minHeight:400,maxWidth:Math.max(...areas().map(a=>a.width)),maxHeight:Math.max(...areas().map(a=>a.height)),frame:false,thickFrame:false,show:false,transparent:true,hasShadow:false,alwaysOnTop:settings.pinned,skipTaskbar:false,minimizable:false,maximizable:false,fullscreenable:false,title:'Игровое окно · Albion Lab',backgroundColor:'#00000000',icon:path.join(__dirname,'assets','icon.ico'),webPreferences:{preload:path.join(__dirname,'shopping-preload.cjs'),nodeIntegration:false,contextIsolation:true,sandbox:true,webSecurity:true,backgroundThrottling:false}});
   mini.setMenu(null);mini.setAlwaysOnTop(settings.pinned,'screen-saver');normalBounds=place(settings.bounds);
   mini.webContents.setWindowOpenHandler(()=>({action:'deny'}));mini.webContents.on('will-navigate',(event,url)=>{if(url!==origin+'/shopping-mini.html')event.preventDefault();});mini.webContents.on('will-attach-webview',event=>event.preventDefault());
   const changed=()=>{if(!alive(mini)||adjusting)return;if(!compact)normalBounds=mini.getBounds();else{const rect=mini.getBounds();normalBounds={...normalBounds,x:rect.x,y:rect.y,width:rect.width};}clearTimeout(timer);timer=setTimeout(save,250);};
@@ -35,11 +38,15 @@ function createShoppingWindow({BrowserWindow,ipcMain,screen,app,getMain,origin,d
   mini.once('ready-to-show',()=>{if(!diagnostic&&alive(mini))mini.show();});
   await mini.loadURL(origin+'/shopping-mini.html');return windowState();
  }
- ipcMain.handle('shopping:open',(event,payload)=>{if(!mainSender(event))throw Error('Forbidden');return open(payload?.server);});
+ ipcMain.handle('shopping:open',(event,payload)=>{if(!mainSender(event))throw Error('Forbidden');return open(payload?.server,payload?.page);});
  ipcMain.on('shopping:response',(event,response)=>{if(!mainSender(event)||typeof response?.id!=='string')return;const entry=pending.get(response.id);if(!entry)return;clearTimeout(entry.timeout);pending.delete(response.id);response.ok?entry.resolve(response.value):entry.reject(Error(typeof response.error==='string'?response.error.slice(0,500):'Не удалось изменить закупки.'));});
  ipcMain.on('shopping:changed',(event,payload)=>{if(!mainSender(event)||!alive(mini))return;if(payload?.server===viewServer)emit(payload);});
  ipcMain.handle('shopping:command',async(event,payload)=>{
   if(!miniSender(event))throw Error('Forbidden');
+  if(['play-state','play-volume','play-scanner','play-search','play-recipe'].includes(payload?.action)){
+   if(JSON.stringify(payload).length>1000)throw Error('Некорректное действие.');
+   return ask(payload.action,payload);
+  }
   if(!payload||typeof payload!=='object'||JSON.stringify(payload).length>16000||!['state','purchase','order','undo'].includes(payload.action)||!servers.includes(payload.server))throw Error('Некорректное действие.');
   if(payload.action==='state')viewServer=payload.server;else if(payload.server!==viewServer)throw Error('Сервер изменился. Проверьте список.');
   const result=await ask(payload.action,payload);if(payload.server===viewServer)emit(result);return {...result,window:windowState()};
@@ -49,7 +56,7 @@ function createShoppingWindow({BrowserWindow,ipcMain,screen,app,getMain,origin,d
   const action=payload?.action;
   if(action==='close'){mini.close();return {closed:true};}
   if(action==='main'){showMain();return windowState();}
-  if(action==='state')return {server:viewServer,...windowState()};
+  if(action==='state')return {server:viewServer,page:initialPage,...windowState()};
   if(action==='pin'){if(typeof payload.value!=='boolean')throw Error('Некорректное закрепление.');mini.setAlwaysOnTop(payload.value,'screen-saver');settings.pinned=payload.value;}
   else if(action==='opacity'){if(typeof payload.value!=='number'||!Number.isFinite(payload.value)||payload.value<.15||payload.value>1)throw Error('Непрозрачность фона должна быть от 15 до 100%.');settings.backgroundOpacity=payload.value;}
   else if(action==='corner'){const rect=mini.getBounds(),area=screen.getDisplayMatching(rect).workArea;const placed=place(corner(rect,area,payload.value));normalBounds=compact?{...normalBounds,x:placed.x,y:placed.y,width:placed.width}:placed;}

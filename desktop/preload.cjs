@@ -16,7 +16,7 @@ contextBridge.exposeInMainWorld('DesktopApp', {
     onScan: callback => { const listener = (_event, result) => callback(result); ipcRenderer.on('avalon:scan-result', listener); return () => ipcRenderer.removeListener('avalon:scan-result', listener); }
   },
   shopping: {
-    open: server => ipcRenderer.invoke('shopping:open', { server }),
+    open: (server,page) => ipcRenderer.invoke('shopping:open', { server,page }),
     onRequest: callback => { const listener = (_event, request) => callback(request); ipcRenderer.on('shopping:request', listener); return () => ipcRenderer.removeListener('shopping:request', listener); },
     respond: response => ipcRenderer.send('shopping:response', response),
     changed: state => ipcRenderer.send('shopping:changed', state)
