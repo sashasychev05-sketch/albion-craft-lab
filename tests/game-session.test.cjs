@@ -4,6 +4,16 @@ const start=Date.parse('2026-10-30T10:00:00Z'),date=offset=>new Date(start+offse
 function session(id='s1',character='Alice',server='Europe'){return {id:'session:'+id,sessionId:id,kind:'session',time:date(0),data:{id,characterName:character,serverLocation:server,startedAtUtc:date(0),endedAtUtc:date(120000)}};}
 function stat(id,value=100,sid='s1',metric='Fame'){return {id,sessionId:sid,kind:'stat',time:date(1000),data:{entry:{valueType:metric,value}}};}
 function fixture(fn){const folder=fs.mkdtempSync(path.join(os.tmpdir(),'game-session-')),db=new SessionDatabase(path.join(folder,'sessions.sqlite3'));try{return fn(db,folder);}finally{db.close();assert.ok(path.resolve(folder).startsWith(path.resolve(os.tmpdir())+path.sep));fs.rmSync(folder,{recursive:true,force:true});}}
+test('portal HUD uses fresh same-server context and the latest combat ID',()=>fixture(db=>{
+ const active=session();active.data.endedAtUtc=null;
+ const combat=(id,fight,offset,value,local=true)=>({id,sessionId:'s1',kind:'combat',time:date(offset),data:{combatId:fight,sourceLocal:local,metric:'Damage',value}});
+ db.ingest([active,stat('fame',900),{id:'ctx',kind:'context',sessionId:'s1',time:date(1000),data:{server:'Europe',inGame:true}},combat('a','old',3000,500),combat('b','current',27000,40),combat('c','current',119000,60),combat('d','current',119001,99,false)]);
+ const scope={server:'europe',captureStartedAt:start};
+ assert.deepEqual(db.hud(scope,start+120000),{fame:27000,fight:100,damage:600,silver:0});
+ assert.equal(db.hud(scope,start+150000).fight,null);
+ assert.equal(db.hud({...scope,server:'west'},start+120000),null);
+ assert.equal(db.hud({...scope,captureStartedAt:start+5000},start+120000),null);
+}));
 test('replayed events and updated entries do not double session or global totals',()=>fixture(db=>{
  db.ingest([session(),stat('a')]);db.ingest([stat('a')]);assert.equal(db.summary({},start+120000).metrics.Fame,100);
  db.ingest([{...stat('a',150),updatedAtUtc:date(3000)}]);assert.equal(db.summary().metrics.Fame,150);

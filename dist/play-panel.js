@@ -3,6 +3,7 @@
 const api = window.ShoppingWindow, el = id => document.getElementById(id);
 const names = {europe:'Европа',west:'Америка',east:'Азия'};
 const volume = el('play-volume'), record = el('play-record'), pageSelect = el('play-page');
+let savingPurchase=false;
 let page = 'shopping', version = 0, busy = false, model = null, dirty = false, timer;
 function paint(next) {
  el('play-summary').textContent = page === 'craft' ? next.amount + ' · прибыль: ' + next.profit : next.last || (next.started ? 'Запись включена · ' + next.count : 'Запись выключена');
@@ -10,6 +11,11 @@ function paint(next) {
  if (page === 'craft') {
   el('play-title').textContent = next.name;
   el('play-context').textContent += ' · ' + next.amount;
+  el('play-station').textContent='Крафтов: '+next.ops+' · Фокус: '+next.focus;
+  const bill=el('play-bill'),signature=JSON.stringify(next.bill);
+  if(bill.dataset.signature!==signature){bill.dataset.signature=signature;bill.replaceChildren(...next.bill.map(m=>{const row=document.createElement('li');row.textContent=m.name+' · '+m.quantity+' шт.'+(m.city?' · '+m.city:'');return row;}));}
+  const canProcure=Number.isSafeInteger(next.units)&&next.units>0&&next.bill.length>0;
+  el('play-procure').disabled=savingPurchase||!canProcure;el('play-procure').title=canProcure?'':'Увеличьте объём партии, чтобы появились материалы для закупки.';
   el('play-cost').textContent = next.cost; el('play-profit').textContent = next.profit;
   el('play-volume-label').textContent = next.field === 'quantity' ? 'Готовых предметов' : 'Бюджет фокуса';
   if (next.recipe !== model?.recipe || next.field !== model?.field || next.server !== model?.server) dirty = false;
@@ -20,6 +26,8 @@ function paint(next) {
   record.textContent = next.started ? 'Выключить запись' : 'Включить запись';
   el('play-hint').textContent = next.started ? 'Наведите курсор на портал и нажмите ' + next.trigger + '. Переходов записано: ' + next.count + '.' :
    next.available ? 'Запись использует сохранённую кнопку сканирования.' : 'Подключите Checker в настройках локаций Albion Lab.';
+  const leg=next.leg;el('play-itinerary').hidden=!leg;
+  if(leg){const label=leg.done?'Маршрут завершён':leg.label;el('play-leg').textContent=label;el('play-leg-time').textContent=leg.done?'':(leg.index+1)+' / '+leg.total+' · '+leg.left;el('play-next').hidden=leg.done;el('play-next').disabled=!leg.active;el('play-summary').textContent=label+(leg.done?'':' · '+leg.left);}
   el('play-last').textContent = next.last; el('play-status').textContent = next.error || '';
  }
  model = next;
@@ -90,6 +98,13 @@ async function submit(action,payload) {
  if (busy && !pageSelect.disabled) { version++; busy = false; }
  await request(action,payload);
 }
+el('play-next').onclick=()=>{if(model?.leg?.active)submit('play-next',{server:model.server,from:model.leg.from,to:model.leg.to,index:model.leg.index});};
+el('play-procure').onclick=async()=>{
+ const button=el('play-procure');if(!model||button.disabled)return;const server=model.server;savingPurchase=true;button.disabled=true;
+ try{await api.command({action:'play-procure',page:'craft',server:model.server,recipe:model.recipe,amount:model.units});
+ select('shopping');const selector=el('mini-server');selector.value=server;selector.dispatchEvent(new Event('change'));}
+ catch(e){el('play-status').textContent=e.message;}finally{savingPurchase=false;button.disabled=!(model?.units>0&&model?.bill?.length);}
+};
 record.onclick = () => model && submit('play-scanner',{server:model.server,started:model.started});
 el('play-main').onclick = () => api.window({action:'main'}).catch(e => { el('play-status').textContent = e.message; });
 window.PlayPanel = {select};

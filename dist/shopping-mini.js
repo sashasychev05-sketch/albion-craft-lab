@@ -4,7 +4,7 @@ const names={Lymhurst:'Люмхурст',Martlock:'Мартлок',Thetford:'Т�
 let state={server:'europe',groups:[],canUndo:false},server='europe',busy=false,sequence=0,page=0,pageCount=1,cityReady=false,editor=null,resizeFrame;
 function message(text,bad=false){$('mini-status').textContent=text;$('mini-status').classList.toggle('error',bad);}
 function backgroundOpacity(value){document.documentElement.style.setProperty('--mini-background-opacity',String(value));$('mini-opacity').value=Math.round(value*100);$('mini-opacity-label').textContent=Math.round(value*100)+'%';}
-function windowState(value){if(!value)return;document.body.classList.toggle('compact',!!value.compact);$('mini-pin').setAttribute('aria-pressed',String(!!value.pinned));$('mini-compact').textContent=value.compact?'□':'−';$('mini-compact').title=value.compact?'Развернуть список':'Свернуть в полоску';$('mini-compact').setAttribute('aria-label',$('mini-compact').title);backgroundOpacity(value.backgroundOpacity??.65);}
+function windowState(value){if(!value)return;if(value.compact&&!document.body.classList.contains('compact'))overControls=false;document.body.classList.toggle('compact',!!value.compact);$('mini-pin').setAttribute('aria-pressed',String(!!value.pinned));$('mini-compact').textContent=value.compact?'□':'−';$('mini-compact').title=value.compact?'Развернуть список':'Свернуть в полоску';$('mini-compact').setAttribute('aria-label',$('mini-compact').title);backgroundOpacity(value.backgroundOpacity??.65);}
 function render(){
  const selected=$('mini-city').value,available=[...new Set(state.groups.map(g=>g.city))];
  $('mini-city').innerHTML='<option value="all">Все города</option>'+available.map(c=>`<option value="${esc(c)}">${esc(city(c))}</option>`).join('');
@@ -55,6 +55,10 @@ $('mini-prev').onclick=()=>{page--;render();};$('mini-next').onclick=()=>{page++
 $('mini-refresh').onclick=async()=>{const next=await command('state');if(next)message('Список обновлён.');};
 $('mini-undo').onclick=async()=>{const next=await command('undo');if(next)message('Последняя общая отметка отменена.');};
 async function control(action,value){try{const next=await api.window({action,value});windowState(next);}catch(e){message(e.message,true);}}
+let overControls=false;
+function passThrough(over){if(overControls===over)return;overControls=over;if(document.body.classList.contains('compact'))control('compact-controls',over);}
+document.addEventListener('mousemove',event=>passThrough(!!event.target.closest('#mini-compact')));
+document.addEventListener('mouseleave',()=>passThrough(false));
 $('mini-close').onclick=()=>control('close');$('mini-main').onclick=()=>control('main');$('mini-pin').onclick=()=>control('pin',$('mini-pin').getAttribute('aria-pressed')!=='true');$('mini-compact').onclick=()=>control('compact');
 $('mini-settings').onclick=()=>$('mini-options').showModal();$('mini-options-close').onclick=()=>$('mini-options').close();
 $('mini-corner').onchange=()=>{if($('mini-corner').value)control('corner',$('mini-corner').value);$('mini-corner').value='';};

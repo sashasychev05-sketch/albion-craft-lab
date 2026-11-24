@@ -22,12 +22,18 @@ function createShoppingWindow({BrowserWindow,ipcMain,screen,app,getMain,origin,d
  }
  function rejectPending(){for(const entry of pending.values()){clearTimeout(entry.timeout);entry.reject(Error('Основное приложение перезагружается. Повторите действие.'));}pending.clear();}
  function showMain(){const main=getMain();if(alive(main)){if(main.isMinimized())main.restore();if(!diagnostic){main.show();main.focus();}hiddenMain=false;}}
+ function sizeMode(value){
+  compact=value;
+  if(compact){normalBounds=mini.getBounds();mini.setMinimumSize(300,64);mini.setMaximumSize(Math.max(...areas().map(a=>a.width)),64);const placed=place({...normalBounds,height:64});normalBounds={...normalBounds,x:placed.x,y:placed.y,width:placed.width};}
+  else{const restore=bounds(normalBounds,areas());adjusting=true;mini.setMaximumSize(Math.max(...areas().map(a=>a.width)),Math.max(...areas().map(a=>a.height)));mini.setMinimumSize(300,400);adjusting=false;normalBounds=place(restore);}
+  mini.setIgnoreMouseEvents(compact,compact?{forward:true}:{});
+ }
  let initialPage='shopping';
  async function open(server,page='shopping'){
   if(!['craft','roads','shopping'].includes(page))throw Error('Неизвестный раздел.');
   initialPage=page;
   if(!servers.includes(server))throw Error('Неизвестный сервер.');viewServer=server;
-  if(alive(mini)){if(!diagnostic){mini.show();mini.focus();}emit({...await ask('state',{server:viewServer}),page},true);return windowState();}
+  if(alive(mini)){if(compact)sizeMode(false);if(!diagnostic){mini.show();mini.focus();}emit({...await ask('state',{server:viewServer}),page},true);return windowState();}
   settings=read();compact=false;normalBounds={...settings.bounds};
   mini=new BrowserWindow({...settings.bounds,minWidth:300,minHeight:400,maxWidth:Math.max(...areas().map(a=>a.width)),maxHeight:Math.max(...areas().map(a=>a.height)),frame:false,thickFrame:false,show:false,transparent:true,hasShadow:false,alwaysOnTop:settings.pinned,skipTaskbar:false,minimizable:false,maximizable:false,fullscreenable:false,title:'Игровое окно · Albion Lab',backgroundColor:'#00000000',icon:path.join(__dirname,'assets','icon.ico'),webPreferences:{preload:path.join(__dirname,'shopping-preload.cjs'),nodeIntegration:false,contextIsolation:true,sandbox:true,webSecurity:true,backgroundThrottling:false}});
   mini.setMenu(null);mini.setAlwaysOnTop(settings.pinned,'screen-saver');normalBounds=place(settings.bounds);
@@ -43,7 +49,7 @@ function createShoppingWindow({BrowserWindow,ipcMain,screen,app,getMain,origin,d
  ipcMain.on('shopping:changed',(event,payload)=>{if(!mainSender(event)||!alive(mini))return;if(payload?.server===viewServer)emit(payload);});
  ipcMain.handle('shopping:command',async(event,payload)=>{
   if(!miniSender(event))throw Error('Forbidden');
-  if(['play-state','play-volume','play-scanner','play-search','play-recipe'].includes(payload?.action)){
+  if(['play-state','play-volume','play-scanner','play-search','play-recipe','play-next','play-procure'].includes(payload?.action)){
    if(JSON.stringify(payload).length>1000)throw Error('Некорректное действие.');
    return ask(payload.action,payload);
   }
@@ -60,11 +66,9 @@ function createShoppingWindow({BrowserWindow,ipcMain,screen,app,getMain,origin,d
   if(action==='pin'){if(typeof payload.value!=='boolean')throw Error('Некорректное закрепление.');mini.setAlwaysOnTop(payload.value,'screen-saver');settings.pinned=payload.value;}
   else if(action==='opacity'){if(typeof payload.value!=='number'||!Number.isFinite(payload.value)||payload.value<.15||payload.value>1)throw Error('Непрозрачность фона должна быть от 15 до 100%.');settings.backgroundOpacity=payload.value;}
   else if(action==='corner'){const rect=mini.getBounds(),area=screen.getDisplayMatching(rect).workArea;const placed=place(corner(rect,area,payload.value));normalBounds=compact?{...normalBounds,x:placed.x,y:placed.y,width:placed.width}:placed;}
-  else if(action==='compact'){
-   compact=!compact;
-   if(compact){normalBounds=mini.getBounds();mini.setMinimumSize(300,64);mini.setMaximumSize(Math.max(...areas().map(a=>a.width)),64);const placed=place({...normalBounds,height:64});normalBounds={...normalBounds,x:placed.x,y:placed.y,width:placed.width};}
-   else{const restore=bounds(normalBounds,areas());adjusting=true;mini.setMaximumSize(Math.max(...areas().map(a=>a.width)),Math.max(...areas().map(a=>a.height)));mini.setMinimumSize(300,400);adjusting=false;normalBounds=place(restore);}
-  }else throw Error('Неизвестное действие окна.');
+  else if(action==='compact')sizeMode(!compact);
+  else if(action==='compact-controls'){if(compact&&typeof payload.value==='boolean')mini.setIgnoreMouseEvents(!payload.value,{forward:true});return windowState();}
+  else throw Error('Неизвестное действие окна.');
   save();return windowState();
  });
  function attach(main){

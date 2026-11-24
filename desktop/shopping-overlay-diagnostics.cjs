@@ -22,6 +22,12 @@ async function run(main,folder,controller){
  await m("document.querySelector('#play-matches button').click()");
  await until(async()=>await exec("CraftApp.snapshot().recipe.id")===alternative,'shared recipe selection');
  await until(()=>m("!document.getElementById('play-picker').open"),'recipe selection complete');
+ assert.equal(await m("document.querySelectorAll('#play-bill li').length"),await exec("CraftApp.snapshot().result.bill.filter(m=>m.buy>0).length"));
+ assert.equal(await exec("document.getElementById('field-profit').textContent"),await exec("document.getElementById('profit').textContent"));
+ await exec("document.getElementById('field-volume').value=100;document.querySelector('.field-ledger form').requestSubmit()");
+ await until(()=>m("document.getElementById('play-volume').value==='100'"),'workshop edits propagate to game');
+ await exec("document.querySelector('.field-workshop').scrollIntoView({block:'start',behavior:'instant'})");
+ fs.writeFileSync(path.join(folder,'field-workshop.png'),(await main.webContents.capturePage()).toPNG());
  await shot('play-craft.png');
  await exec("document.querySelector('#roads-record + button').click()");
  await until(()=>m("document.getElementById('play-title').textContent==='Запись выключена'"),'roads panel');
@@ -82,6 +88,12 @@ async function run(main,folder,controller){
  function opaquePixels(rect){let found=0;for(let y=Math.ceil(rect.y*scaleY);y<Math.floor((rect.y+rect.height)*scaleY);y++)for(let x=Math.ceil(rect.x*scaleX);x<Math.floor((rect.x+rect.width)*scaleX);x++)if(alpha(x,y)>=250)found++;return found;}
  const textPixels=opaquePixels(foreground.rect),iconPixels=opaquePixels(foreground.icon);assert.ok(textPixels>10,JSON.stringify({textPixels}));assert.ok(iconPixels>100,JSON.stringify({iconPixels}));assert.equal(mini.getOpacity(),1);
  const transparency={backgroundAlpha,textPixels,iconPixels,nativeOpacity:mini.getOpacity(),width:dimensions.width,height:dimensions.height};
+ await exec("CraftApp.saveConfig({quantity:12,volumeMode:'quantity',focus:false});document.getElementById('field-overlay').click()");
+ await until(()=>m("document.getElementById('play-page').value==='craft' && !document.getElementById('play-volume').disabled"),'craft reopened');
+ const beforeCards=await exec('BatchCards.snapshot().cards.length');
+ await m("document.getElementById('play-procure').click()");
+ await until(()=>m("document.getElementById('play-page').value==='shopping' && !ShoppingMini.busy()"),'live bill to purchases');
+ assert.equal(await exec('BatchCards.snapshot().cards.length'),beforeCards+1);
  assert.deepEqual(errors,[]);mini.close();
  return {nativeAlwaysOnTop:true,independentWindow:true,partialPurchase:true,fullCheckbox:true,sharedUndo:true,staleDraftProtected:true,serverPinned:true,existingWindowContext:true,mainReload:true,minimizedMain:true,closedMainKeptAlive:true,persistence:true,compact:true,stableGeometry:true,opacity:true,backgroundOnlyTransparency:transparency,corners:true,safeBridge:true,narrowLayout:true,placedOrders:true,noScrolling:true,cityPages:true,responsivePageSize:true,initialBounds:before,placedBounds:placed,consoleErrors:errors};
 }

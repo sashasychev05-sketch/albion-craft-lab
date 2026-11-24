@@ -30,6 +30,7 @@ class SessionDatabase {
       CREATE TABLE IF NOT EXISTS records(id TEXT PRIMARY KEY, sid TEXT NOT NULL, kind TEXT NOT NULL, at INTEGER NOT NULL, data TEXT NOT NULL, updated INTEGER NOT NULL);
       CREATE INDEX IF NOT EXISTS records_session_time ON records(sid,at);
       CREATE INDEX IF NOT EXISTS records_time ON records(at);
+      CREATE INDEX IF NOT EXISTS records_combat_group ON records(sid,json_extract(data,'$.data.combatId'),at) WHERE kind='combat';
       CREATE TABLE IF NOT EXISTS totals(sid TEXT, metric TEXT, value REAL NOT NULL, PRIMARY KEY(sid,metric));
       CREATE TABLE IF NOT EXISTS buckets(sid TEXT, metric TEXT, minute INTEGER, value REAL NOT NULL, PRIMARY KEY(sid,metric,minute));
       CREATE TABLE IF NOT EXISTS local_combat(id TEXT PRIMARY KEY,sid TEXT NOT NULL,at INTEGER NOT NULL,damage REAL NOT NULL,heal REAL NOT NULL);
@@ -107,6 +108,17 @@ class SessionDatabase {
     this.ingest(records,{file:filename,position:position+end+1});
     if(invalid)onInvalid(invalid);
     return end+1;
+  }
+  hud({server,captureStartedAt},now=Date.now()) {
+    const c=this.context();
+    if(!c?.inGame || c.tracking===false || !c.sessionId || !(c.at>=captureStartedAt) || serverName(c.server)!==server)return null;
+    const session=this.db.prepare('SELECT start FROM sessions WHERE id=? AND server=? AND end IS NULL').get(c.sessionId,server);
+    if(!session)return null;
+    const totals=Object.fromEntries(this.db.prepare("SELECT metric,value FROM totals WHERE sid=? AND metric IN ('Fame','Silver','localDamage')").all(c.sessionId).map(r=>[r.metric,r.value]));
+    const recent=this.db.prepare("SELECT json_extract(data,'$.data.combatId') AS fight FROM records WHERE sid=? AND at BETWEEN ? AND ? AND kind='combat' AND json_extract(data,'$.data.combatId') IS NOT NULL ORDER BY at DESC LIMIT 1").get(c.sessionId,now-10000,now);
+    const fight=recent?this.db.prepare("SELECT SUM(json_extract(data,'$.data.value')) AS damage FROM records WHERE sid=? AND kind='combat' AND json_extract(data,'$.data.combatId')=? AND json_extract(data,'$.data.metric')='Damage' AND json_extract(data,'$.data.sourceLocal')=1").get(c.sessionId,recent.fight):null;
+    return {fight:fight?number(fight.damage):null,damage:number(totals.localDamage),silver:number(totals.Silver),
+      fame:now-session.start>=60000?number(totals.Fame)*3600000/(now-session.start):null};
   }
   context() { const row=this.db.prepare("SELECT data FROM state WHERE key='context'").get(); return row?JSON.parse(row.data):null; }
   where(filter={}, alias='s') {

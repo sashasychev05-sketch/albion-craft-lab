@@ -1,0 +1,24 @@
+.field-nav{display:flex;gap:4px;flex-wrap:wrap;margin:8px 0}
+.field-nav button,.field-workshop button,.atlas-leg button{border:1px solid #a09577;border-radius:4px;color:#26382e;background:#f8f2df;padding:6px 10px;cursor:pointer;font:inherit}
+.field-nav button{background:#23392e;color:#fff5d6;border-color:#425749}
+.field-workshop,.atlas-sheet{color:#253329;background:#f6eed7;border:1px solid #ab9c77;border-radius:8px;overflow:hidden}
+.field-workshop{display:grid;grid-template-columns:minmax(155px,.95fr) minmax(190px,1.35fr) minmax(170px,1fr);margin:12px 0 18px}
+.field-workshop>div{min-width:0;padding:clamp(12px,1.6vw,24px)}
+.field-workshop h2,.field-workshop h3,.atlas-leg h3,.atlas-heading{font-family:Georgia,serif;line-height:1.12}
+.field-workshop h2,.field-workshop h3{color:#243629;margin:0 0 12px}
+.field-workshop small,.field-workshop label{display:block;margin:6px 0;color:#435044;font-size:12px}
+.field-recipe{background:#f4e8c9 url('atlas-paper.png') center/cover}
+.field-recipe strong{font:600 21px Georgia,serif;display:block}.field-workshop input:not([type=checkbox]){background:#fffaf0;color:#243329;border:1px solid #938a73;border-radius:3px;width:100%;padding:6px}
+.field-bill{border-inline:1px solid #c4b99b}.field-bill ul{padding:0;margin:6px 0;max-height:165px;overflow:auto}
+.field-bill li{display:grid;grid-template-columns:32px 1fr auto;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid #d8cdb2;font-size:13px}
+#field-profit{font:600 clamp(21px,2.5vw,42px) Georgia,serif;overflow-wrap:anywhere}.field-ledger form{margin-bottom:8px}.field-ledger form input{max-width:9em}
+#field-overlay{background:#893e2d;color:white}#field-hits{max-height:110px;overflow:auto}#field-hits button{width:100%;text-align:left}
+.atlas-quote{display:block;color:var(--muted);font-size:11px}
+.atlas-sheet{display:grid;grid-template-columns:minmax(0,1fr) minmax(170px,22%)}.atlas-sheet .roads-graph{margin:0;max-height:55vh;overflow:auto;background:#f6edcf url('atlas-paper.png') center/cover;color:#24382d;border:0;min-height:240px}
+.atlas-sheet .roads-graph>.hint{color:#394634;padding:18px;background:#f8f1dbdd}.atlas-sheet .roads-node-frame{fill:#fff7df}
+.atlas-sheet .roads-node text:not(.roads-degree):not(.roads-exit-badge text){fill:#27372b}.atlas-sheet .roads-link text{fill:#28382d;stroke:#fff5d6;stroke-width:3px;paint-order:stroke}
+.atlas-sheet .roads-link.route path{stroke:#a34332}.atlas-sheet .roads-link path.atlas-hit{stroke:transparent;stroke-width:16;pointer-events:stroke;cursor:pointer}
+.atlas-sheet .roads-link:focus-visible path:first-of-type{stroke:#99372a;stroke-width:5}
+.atlas-leg{padding:16px;border-left:1px solid #b6a680}.atlas-leg p{color:#5c4626}.atlas-leg button{display:block;margin-bottom:6px;width:100%;overflow-wrap:anywhere}.atlas-leg small{display:block;color:#584b36;margin-bottom:10px}.atlas-leg strong{overflow-wrap:anywhere}
+@media(max-width:1000px){.field-workshop{grid-template-columns:repeat(2,minmax(0,1fr))}.field-ledger{grid-column:1/-1}.atlas-sheet{grid-template-columns:1fr}.atlas-leg{border:0;border-top:1px solid #b6a680}}
+@media(max-width:640px){.field-workshop{grid-template-columns:1fr}.field-bill{border-inline:0;border-block:1px solid #c4b99b}}

@@ -71,7 +71,7 @@ async function run(window, updates, folder, shopping, offlineAttempts = [], aval
     fs.writeFileSync(path.resolve(folder,'diagnostics.json'),JSON.stringify({result,market,errors},null,2));assert.deepEqual(errors,[]);clearTimeout(timeout);return;
   }
   if (process.argv.includes('--avalon-only')) {
-    result.avalon = await require('./avalon-diagnostics.cjs').run(window, folder, avalon);
+    result.avalon = await require('./avalon-diagnostics.cjs').run(window, folder, avalon, shopping);
     result.errors = errors.filter(message => !/Failed to load resource.*(net::|status of)/.test(message));
     assert.deepEqual(result.errors, []);
     fs.writeFileSync(path.resolve(folder, 'diagnostics.json'), JSON.stringify(result, null, 2));

@@ -4,6 +4,11 @@ const byId = id => document.getElementById(id);
 async function action(action, p) {
  if (p.page === 'craft') {
   const craft = CraftApp.snapshot();
+  if(action==='play-procure'){
+   if(craft.recipe.id!==p.recipe||p.server!==craft.server||craft.result.amount!==p.amount)throw Error('Партия изменилась. Проверьте объём.');
+   if(!BatchCards.store)throw Error('Хранилище партий недоступно.');
+   const seed=BatchCards.craftSeed();BatchCards.store.add(seed);BatchCards.render();return {saved:true};
+  }
   if (action === 'play-search') {
    const query = String(p.query || '').trim().toLocaleLowerCase('ru').slice(0,100);
    if (!query) return [];
@@ -32,7 +37,7 @@ async function action(action, p) {
    input.dispatchEvent(new Event('input', {bubbles:true}));
   } else if (action !== 'play-state') throw Error('Неизвестное действие.');
   return {server:craft.server, recipe:craft.recipe.id, name:craft.recipe.name, field, value:input.value,
-   min:input.min, max:input.max, cost:byId('cost').textContent, profit:byId('profit').textContent, amount:byId('output-tag').textContent};
+   units:CraftApp.snapshot().result.amount,ops:CraftApp.snapshot().result.ops,focus:byId('focus-result').textContent,bill:CraftApp.snapshot().result.bill.filter(m=>m.buy>0).map(m=>({name:ALBION_DATA.names[m.id]||m.id,quantity:m.buy,city:m.city})),min:input.min, max:input.max, cost:byId('cost').textContent, profit:byId('profit').textContent, amount:byId('output-tag').textContent};
  }
  if (p.page !== 'roads') throw Error('Неизвестный раздел.');
  const api = window.DesktopApp.avalon, server = ActivityViews.avalon.state.server;
@@ -42,9 +47,9 @@ async function action(action, p) {
    throw Error('Состояние записи изменилось. Проверьте сервер.');
   status = status.session ? await api.engine('stop') : await api.engine('start', {server});
   await window.AvalonEngineUI?.refresh();
- } else if (action !== 'play-state') throw Error('Неизвестное действие.');
+ } else if (!['play-state','play-next'].includes(action)) throw Error('Неизвестное действие.');
  const s = status.session, r = status.lastScan;
- return {server:s?.server || server, available:status.available, started:s?.started ?? null, count:s?.count || 0,
+ return {leg:window.AvalonRoadsUI?.pinnedLeg(s?.server||server,action==='play-next'&&p.server===(s?.server||server)?p:null),server:s?.server || server, available:status.available, started:s?.started ?? null, count:s?.count || 0,
   trigger:s?.trigger === 'keyboard' ? s.shortcut.replace('CommandOrControl','Ctrl') : ({middle:'среднюю кнопку мыши',mouse4:'боковую кнопку 1',mouse5:'боковую кнопку 2'}[s?.trigger]),
   last:r ? [r.from || '?',r.to || '?'].join(' → ') + (r.recorded ? ' · сохранено' : ' · не записано') : '', error:status.error};
 }

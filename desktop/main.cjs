@@ -90,7 +90,7 @@ else {
       { label: 'Вид', submenu: [{ label: 'Увеличить', role: 'zoomIn' }, { label: 'Уменьшить', role: 'zoomOut' }, { label: 'Исходный масштаб', role: 'resetZoom' }, { label: 'На весь экран', role: 'togglefullscreen' }] }
     ]));
     shopping = require('./shopping-window.cjs').createShoppingWindow({ BrowserWindow, ipcMain, screen, app, getMain: () => window, origin: ORIGIN, diagnostic: !!diagnosticFolder });
-    avalon = require('./avalon-controller.cjs').createAvalon({app,ipcMain,dialog,BrowserWindow,screen,desktopCapturer,globalShortcut,net,getSatLocation:async(server)=>{
+    avalon = require('./avalon-controller.cjs').createAvalon({app,ipcMain,dialog,BrowserWindow,screen,desktopCapturer,globalShortcut,net,getHud:async server=>{const e=statistics?.snapshot();return e?.captureActive?gameSession.request('hud',{server,captureStartedAt:e.captureStartedAt}):null;},getSatLocation:async(server)=>{
       const capture=statistics?.snapshot();
       if (!capture?.captureActive) return null;
       const context=await gameSession.request("context");
