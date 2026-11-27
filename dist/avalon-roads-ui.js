@@ -10,7 +10,7 @@ $('avalon-content').querySelector('.avalon-heading').before(panel);
 panel.querySelector('h2').after(panel.querySelector('.atlas-sheet'),$('roads-route'),$('atlas-pin'));
 let state={edges:[],marks:{},session:null},busy=false,loaded=false,lastKey='',clickTimer=null,drag=null,skipClick=false,layoutKey='',position=new Map(),loopQuery=null,loopResult=null,selectedLoop=0;
 const detail=document.createElement('dialog');detail.id='roads-detail-dialog';detail.className='roads-detail-dialog';detail.setAttribute('aria-labelledby','roads-detail-title');document.body.append(detail);
-let inspected = '',planned=null,pinned=null;
+let inspected = '',planned=null;
 function inspectLeg(all, preferred) {
  const leg = all.find(e => R.key(e.from,e.to) === inspected) || preferred;
  $('atlas-leg-name').textContent = leg ? name(leg.from)+' ↔ '+name(leg.to) : 'Выберите линию на карте';
@@ -45,7 +45,7 @@ $('roads-sat-location').onclick=async()=>{
 const MarkerLabel=kind=>({black:'Чёрная зона',blue:'Синяя зона / город',yellow:'Жёлтая зона',red:'Красная зона',unknown:'Внешняя зона'}[kind]);
 function left(expires){if(expires===null)return 'таймер ?';const min=Math.floor((expires-Date.now())/60000);return min<0?'истёк':min<1?'< 1 мин':`${Math.floor(min/60)} ч ${min%60} мин`;}
 function edges(){const manual=(AvalonUI.snapshot().saved.timers||[]).map(t=>({...t,captured:t.captured||0,source:'manual'}));return R.merge([...state.edges,...manual].filter(e=>e.server===server()));}
-function render(){if(!zones().length||clickTimer||detail.open||drag)return;const all=edges(),now=Date.now(),reserve=Number($('roads-reserve').value),start=zoneByName($('roads-from').value)?.id,target=$('roads-target').value,ids=zones().filter(z=>target==='safe'?R.classify(z)==='safe':target==='portal'?($('roads-destination-city').value?z.id===$('roads-destination-city').value||state.marks[server()+':'+z.id]===$('roads-destination-city').value:R.classify(z)==='portal'||state.marks[server()+':'+z.id]):z.id===zoneByName($('roads-to').value)?.id).map(z=>z.id),validReserve=Number.isInteger(reserve)&&reserve>=0&&reserve<=1440;
+function render(){routeControls();if(!zones().length||clickTimer||detail.open||drag)return;const all=edges(),now=Date.now(),reserve=Number($('roads-reserve').value),start=zoneByName($('roads-from').value)?.id,target=$('roads-target').value,ids=zones().filter(z=>target==='safe'?R.classify(z)==='safe':target==='portal'?($('roads-destination-city').value?z.id===$('roads-destination-city').value||state.marks[server()+':'+z.id]===$('roads-destination-city').value:R.classify(z)==='portal'||state.marks[server()+':'+z.id]):z.id===zoneByName($('roads-to').value)?.id).map(z=>z.id),validReserve=Number.isInteger(reserve)&&reserve>=0&&reserve<=1440;
  const route=validReserve?R.route(all,start,ids,{now,reserve:reserve*60000,mode:$('roads-mode').value}):null;
  $('roads-to').disabled=target!=='exact';$('roads-destination-city').disabled=target!=='portal';$('roads-route').textContent=!validReserve?'Укажите запас от 0 до 1440 минут.':!start?'Выберите начальную зону.':route?route.hops?`${route.nodes.map(name).join(' → ')} · ${route.hops} переходов · весь путь доступен ещё ${left(route.expires)} (до ${new Date(route.expires).toLocaleTimeString('ru-RU')}). Запас ${reserve} мин вычтен при отборе путей.`:'Вы уже в выбранной зоне назначения.':'По сохранённым порталам с таким запасом времени путь не найден. Исследуйте соседние зоны или уточните таймеры.';
  const session=window.AvalonEngineUI?.snapshot()?.session||state.session,labels={europe:'Европа',west:'Америка',east:'Азия'};$('roads-record').disabled=busy||window.AvalonEngineUI?.snapshot()?.busy||(!session&&(!B||!window.AvalonEngineUI?.snapshot()?.available));$('roads-count').textContent=`${all.length} соединений на сервере «${labels[server()]}». ${session?`Сканер: ${labels[session.server]} · сохранено ${session.count}${session.server!==server()?' · выбран другой сервер, сканер остаётся на прежнем':''}`:'Сканер выключен.'}`;
@@ -91,11 +91,19 @@ $('roads-details').onclick=()=>showDetail(zoneByName($('roads-from').value)?.id)
 $('roads-mark').onclick=()=>action(async()=>{const z=zoneByName($('roads-from').value);if(!z)throw Error('Сначала выберите начальную зону.');await B.roads('mark',{server:server(),id:z.id,city:$('roads-city').value});});$('roads-unmark').onclick=()=>action(async()=>{const z=zoneByName($('roads-from').value);if(!z)throw Error('Выберите зону.');await B.roads('mark',{server:server(),id:z.id,city:''});});
 $('roads-edges').onclick=e=>{const remove=e.target.closest('[data-roads-remove]'),edit=e.target.closest('[data-roads-edit]'),edge=edges().find(x=>x.id===(remove?.dataset.roadsRemove||edit?.dataset.roadsEdit));if(!edge)return;if(edit){AvalonUI.select(edge.from);$('avalon-to').value=name(edge.to);$('avalon-minutes').focus();$('avalon-minutes').scrollIntoView({block:'center'});status('Введите оставшееся время из игры и нажмите «Добавить портал» в форме ниже.');}else action(async()=>{const automatic=state.edges.find(e=>e.server===server()&&R.key(e.from,e.to)===R.key(edge.from,edge.to));if(automatic)await B.roads('remove',{id:automatic.id});AvalonUI.removeConnection(server(),edge.from,edge.to);});};
 setInterval(()=>{if(!ActivityViews.avalon.active())return;const key=zones().length+':'+server();if(key!==lastKey){lastKey=key;$('roads-city').innerHTML=zones().filter(z=>R.classify(z)==='portal').map(z=>`<option value="${esc(z.id)}">${esc(z.name)}</option>`).join('');$('roads-destination-city').innerHTML='<option value="">Любой отмеченный</option>'+$('roads-city').innerHTML;if(!loaded){loaded=true;engine();}}refresh();},2000);
-$('atlas-pin').onclick=async()=>{if(!planned)return;pinned={server:server(),nodes:[...planned.nodes],index:0};try{await DesktopApp.shopping.open(server(),'roads');}catch(e){status(e.message,true);}};
+const savedRoute=()=>PinnedRoute.create(localStorage,server());
+const resume=document.createElement('button'),forget=document.createElement('button');
+for(const [button,label] of [[resume,'Продолжить маршрут'],[forget,'Снять закрепление']]){button.className='button';button.textContent=label;button.hidden=true;}
+$('atlas-pin').after(resume,forget);
+function routeControls(){const saved=savedRoute().read();resume.hidden=!saved||saved.index>=saved.nodes.length-1;forget.hidden=!saved;}
+resume.onclick=async()=>{try{await DesktopApp.shopping.open(server(),'roads');}catch(e){status(e.message,true);}};
+forget.onclick=()=>{savedRoute().clear();routeControls();};
+$('atlas-pin').onclick=async()=>{if(!planned)return;try{savedRoute().pin(planned.nodes);routeControls();await DesktopApp.shopping.open(server(),'roads');}catch(e){status(e.message,true);}};
 function pinnedLeg(activeServer,advance){
- if(!pinned||pinned.server!==activeServer||server()!==activeServer)return null;
+ if(server()!==activeServer)return null;
+ const store=savedRoute(),pinned=store.read();if(!pinned)return null;
  const {nodes}=pinned;
- if(advance && advance.index===pinned.index&&advance.from===nodes[pinned.index]&&advance.to===nodes[pinned.index+1])pinned.index++;
+ if(advance){const edge=edges().find(e=>R.key(e.from,e.to)===R.key(nodes[pinned.index],nodes[pinned.index+1]));if(store.advance(advance,edge?.expires,Date.now())){pinned.index++;routeControls();}}
  if(pinned.index>=nodes.length-1)return {done:true};
  const index=pinned.index,from=nodes[index],to=nodes[index+1],leg=edges().find(e=>R.key(e.from,e.to)===R.key(from,to));
  return {from,to,index,label:name(from)+' → '+name(to),left:leg?left(leg.expires):'Связь удалена',active:!!leg&&leg.expires>Date.now(),total:nodes.length-1};
