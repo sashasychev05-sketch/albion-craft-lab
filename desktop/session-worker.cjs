@@ -57,6 +57,9 @@ parentPort.on('message',message=>{
  try{
   let result;
   if(message.action==='context')result=store.context();
+  else if(message.action==='activity')result=store.logActivity(message.args);
+  else if(message.action==='activity-report')result=store.activityReport(message.args);
+  else if(message.action==='price-history')result=store.priceHistory(message.args);
   else if(message.action==='hud')result=store.hud(message.args);
   else if(message.action==='query')result=store.summary(filter(message.args));
   else if(message.action==='refresh'){journalSizes.clear();nextDiscovery=0;pump();result=true;}

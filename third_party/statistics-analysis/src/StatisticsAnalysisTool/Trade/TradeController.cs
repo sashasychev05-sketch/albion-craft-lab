@@ -78,6 +78,20 @@ public class TradeController
                 if (addedTrades.Count > 0)
                 {
                     trades.AddRange(addedTrades);
+                    if (AlbionLabHost.IsEmbedded && AlbionLabSessionBridge.SessionId != Guid.Empty)
+                    {
+                        var values = new TradeAnalyticsValueService();
+                        foreach (var trade in addedTrades)
+                        {
+                            var flow = values.GetBreakdown(trade);
+                            if (flow.Sold == 0 && flow.Bought == 0 && flow.Tax == 0) continue;
+                            AlbionLabSessionBridge.Publish("trade", new {
+                                source = trade.Type.ToString(), item = trade.DisplayItemName,
+                                city = trade.LocationName, income = flow.Sold, expense = flow.Bought, tax = flow.Tax,
+                                quantity = flow.SoldQuantity + flow.BoughtQuantity
+                            }, time: DateTime.SpecifyKind(trade.Timestamp, DateTimeKind.Utc));
+                        }
+                    }
                 }
             });
         }

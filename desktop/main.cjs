@@ -90,7 +90,7 @@ else {
       { label: 'Вид', submenu: [{ label: 'Увеличить', role: 'zoomIn' }, { label: 'Уменьшить', role: 'zoomOut' }, { label: 'Исходный масштаб', role: 'resetZoom' }, { label: 'На весь экран', role: 'togglefullscreen' }] }
     ]));
     shopping = require('./shopping-window.cjs').createShoppingWindow({ BrowserWindow, ipcMain, screen, app, getMain: () => window, origin: ORIGIN, diagnostic: !!diagnosticFolder });
-    avalon = require('./avalon-controller.cjs').createAvalon({app,ipcMain,dialog,BrowserWindow,screen,desktopCapturer,globalShortcut,net,getHud:async server=>{const e=statistics?.snapshot();return e?.captureActive?gameSession.request('hud',{server,captureStartedAt:e.captureStartedAt}):null;},getSatLocation:async(server)=>{
+    avalon = require('./avalon-controller.cjs').createAvalon({app,ipcMain,dialog,BrowserWindow,screen,desktopCapturer,globalShortcut,net,onPortal:r=>gameSession.request('activity',[{at:r.captured,kind:'portal',server:r.server,city:r.from,detail:JSON.stringify({to:r.to,seconds:r.seconds})}]),getHud:async server=>{const e=statistics?.snapshot();return e?.captureActive?gameSession.request('hud',{server,captureStartedAt:e.captureStartedAt}):null;},getSatLocation:async(server)=>{
       const capture=statistics?.snapshot();
       if (!capture?.captureActive) return null;
       const context=await gameSession.request("context");
@@ -98,7 +98,7 @@ else {
       const region={Europe:"europe",America:"west",Asia:"east"}[context?.server];
       return context?.tracking && context.inGame && context.at>=capture.captureStartedAt && region===server ? context.location : null;
     },getMain:()=>window,origin:ORIGIN,diagnostic:!!diagnosticFolder});
-    marketScanner=require('./market-scanner.cjs').createScanner({app,dialog,notify:state=>{if(window&&!window.isDestroyed())window.webContents.send('market-scanner:changed',state);marketOverlay?.update(state);}});
+    marketScanner=require('./market-scanner.cjs').createScanner({app,dialog,logActivity:rows=>gameSession.request('activity',rows),notify:state=>{if(window&&!window.isDestroyed())window.webContents.send('market-scanner:changed',state);marketOverlay?.update(state);}});
     gameSession=require('./game-session.cjs').createGameSession({app,notify:sessionChanged});
     sessionIcons=require('./session-icons.cjs').createSessionIcons({app,net,offline:!!diagnosticFolder&&process.argv.includes('--offline-network')});
     statistics=require('./sat-host.cjs').createSatHost({app,BrowserWindow,BaseWindow,WebContentsView,origin:ORIGIN,onData:()=>gameSession.wake(),notify:state=>{
@@ -123,7 +123,21 @@ else {
     });
     ipcMain.handle('statistics:action',async(event,action)=>{if(!senderAllowed(event))throw Error('Forbidden');if(action==='state')return statistics.snapshot();if(action==='open')return statistics.open();if(action==='stop'){await statistics.stop();return statistics.snapshot();}throw Error('Invalid action');});
     marketOverlay=require('./market-overlay.cjs').createMarketOverlay({BrowserWindow,ipcMain,screen,origin:ORIGIN,getState:()=>marketScanner.state()});
-    ipcMain.handle('market-scanner:action',async(event,action,arg)=>{if(!senderAllowed(event))throw Error('Forbidden');if(action==='state')return marketScanner.state();if(action==='overlay'){await marketOverlay.open();return marketScanner.state();}if(action==='start'){const state=await marketScanner.start(arg);await marketOverlay.open();return state;}if(action==='stop'){await marketScanner.stop();return marketScanner.state();}throw Error('Invalid action');});
+    ipcMain.handle('market-scanner:action',async(event,action,arg)=>{if(!senderAllowed(event))throw Error('Forbidden');if(action==='saved-prices'){
+       if(!Array.isArray(arg)||arg.length>2000)throw Error('Некорректный список цен');
+       const rows=arg.map(r=>{if(!['europe','west','east'].includes(r.server)||typeof r.id!=='string'||!/^[A-Z0-9_@]{1,160}$/.test(r.id)||typeof r.city!=='string'||r.city.length>80||!['buy','sell','bid'].includes(r.action)||!Number.isInteger(r.quality)||r.quality<1||r.quality>5||!(r.price>0&&r.price<=1e12)||!Number.isFinite(r.timestamp))throw Error('Некорректная цена');
+       return {kind:'saved',at:r.timestamp,server:r.server,item:r.id,city:r.city,quality:r.quality,side:r.action,price:r.price};});
+       return gameSession.request('activity',rows);
+     }
+     if(action==='price-history')return gameSession.request('price-history',arg);
+     if(action==='activity-export'){
+       if(!['europe','west','east'].includes(arg?.server)||!Number.isSafeInteger(arg.start)||!Number.isSafeInteger(arg.end)||arg.end<=arg.start||arg.end-arg.start>90000000)throw Error('Выберите день отчёта');
+       const dest=await dialog.showSaveDialog(window,{title:'Отчёт игровой активности',defaultPath:'albion-session.json',filters:[{name:'JSON',extensions:['json']}]});
+       if(dest.canceled)return false;
+       const report=await gameSession.request('activity-report',arg);await fs.promises.writeFile(dest.filePath,JSON.stringify(report,null,2),'utf8');return true;
+     }
+     if(action==='auto-start')return marketScanner.start(arg);
+     if(action==='state')return marketScanner.state();if(action==='overlay'){await marketOverlay.open();return marketScanner.state();}if(action==='start'){const state=await marketScanner.start(arg);await marketOverlay.open();return state;}if(action==='stop'){await marketScanner.stop();return marketScanner.state();}throw Error('Invalid action');});
     let marketQuitting=false;app.on('before-quit',event=>{if(marketQuitting)return;event.preventDefault();marketQuitting=true;sessionQuitting=true;sessionOverlay.dispose();Promise.allSettled([marketScanner.stop(),statistics.stop()]).then(()=>gameSession.close()).catch(error=>console.error(error.message)).finally(()=>app.quit());});
     createWindow();
     if(gameSession.settings().enabled){gameSession.wake();statistics.start().catch(error=>{gameSession.configure({enabled:false});console.error(error.message);sessionChanged();});}

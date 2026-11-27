@@ -3,10 +3,10 @@ const {create}=require('../dist/price-book.js');
 test('scanner saves city prices and only newer observations replace the last saved price',()=>{
  let change,now=Date.now(),raw;
  const storage={getItem:()=>raw,setItem:(_,value)=>{raw=value;}},book=create(storage,()=>now);
- const node=()=>({style:{},querySelector(){return node();},append(){},showModal(){},close(){}});
+ const node=()=>({style:{},addEventListener(){},querySelector(){return node();},append(){},showModal(){},close(){}});
  const window={PriceBook:book,DesktopApp:{marketScanner:{action:async()=>({quotes:[],orders:0}),onChanged:cb=>{change=cb;}}}};
- const document={createElement:node,body:{append(){}},querySelector:()=>node(),dispatchEvent(){}};
- vm.runInNewContext(fs.readFileSync(require.resolve('../dist/market-scanner.js'),'utf8'),{window,document,Date,Event:class{},setInterval(){}});
+ const document={addEventListener(){},createElement:node,body:{append(){}},querySelector:()=>node(),dispatchEvent(){}};
+ vm.runInNewContext(fs.readFileSync(require.resolve('../dist/market-scanner.js'),'utf8'),{window,document,localStorage:storage,Date,Event:class{},setInterval(){}});
  const address=['europe','T4_BAG','Caerleon',1];
  book.set(...address,'sell',310);
  const send=(ask,askTime)=>change({quotes:[{server:address[0],item:address[1],city:address[2],quality:1,ask,bid:200,askTime,bidTime:askTime}],orders:2});

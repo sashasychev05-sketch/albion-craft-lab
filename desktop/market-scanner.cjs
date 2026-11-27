@@ -3,7 +3,7 @@ const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypt
 const {createReceiver,createOrderStore}=require('./market-capture.cjs');
 const cities={'7':'Thetford','1002':'Lymhurst','2004':'Bridgewatch','3003':'Black Market','3005':'Caerleon','3008':'Martlock','4002':'Fort Sterling','5003':'Brecilien'};
 function quotes(orders){const rows=new Map();for(const o of orders){const city=cities[o.location];if(!city)continue;const k=[o.server,o.item,city,o.quality].join('|');let r=rows.get(k);if(!r){r={server:o.server,item:o.item,city,quality:o.quality};rows.set(k,r);}const side=o.type==='offer'?'ask':'bid',t=side+'Time';if(!r[side]||(side==='ask'?o.price<r[side]:o.price>r[side])||(o.price===r[side]&&o.observedAt>r[t])){r[side]=o.price;r[t]=o.observedAt;}}return [...rows.values()];}
-function createScanner({app,notify,spawnProcess=spawn,executablePath}){
+function createScanner({app,notify,logActivity=async()=>{},spawnProcess=spawn,executablePath}){
  const folder=path.join(app.getPath('userData'),'market-scanner'),file=path.join(folder,'orders.json');fs.mkdirSync(folder,{recursive:true});
  const exe=executablePath||(app.isPackaged?path.join(process.resourcesPath,'aodp','albiondata-client.exe'):path.join(__dirname,'vendor','aodp','albiondata-client.exe'));
  let telemetry={},pending=false,session={added:0,updated:0},priceCache=null,publishTimer=null,writes=Promise.resolve();let store=createOrderStore(),receiver,child,server='',message='',running=false;
@@ -18,11 +18,15 @@ function createScanner({app,notify,spawnProcess=spawn,executablePath}){
   const detected={1:'west',2:'east',3:'europe'}[telemetry.server];
   if(detected&&detected!==server){message='Выбран другой сервер. Выключите сканер и выберите сервер игры.';publish();return;}
   const existing=store.list(),next=createOrderStore(undefined,undefined,existing),before=new Set(existing.map(o=>o.server+'|'+o.id));
+  const at=Date.now(),page=createOrderStore(()=>at);page.ingest(server,batch);
   const accepted=next.ingest(server,batch);if(!accepted)return;
   const entries=next.list(),added=entries.reduce((count,o)=>count+!before.has(o.server+'|'+o.id),0),temporary=file+'.tmp';
   await fs.promises.writeFile(temporary,JSON.stringify({version:1,orders:entries}));
   await fs.promises.rename(temporary,file);
   store=next;priceCache=null;session.added+=added;session.updated+=accepted-added;message='Получены цены из игры';publish();
+  const observations=page.list().map(o=>({at,kind:'order',server,city:cities[o.location]||o.location,item:o.item,quality:o.quality,side:o.type,price:o.price,detail:o.id+' × '+o.amount}));
+  const markets=[...new Set(observations.map(r=>r.city))].map(city=>({at,kind:'market-response',server,city}));
+  try{await logActivity([...markets,...observations]);}catch{message='Цены получены, но не удалось записать историю рынка.';publish();}
  });
  writes=task.catch(()=>{message='Не удалось сохранить считанные цены. Проверьте свободное место и доступ к папке профиля.';publish();});return task;
  }});

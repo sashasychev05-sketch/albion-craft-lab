@@ -14,6 +14,16 @@ test('portal HUD uses fresh same-server context and the latest combat ID',()=>fi
  assert.equal(db.hud({...scope,server:'west'},start+120000),null);
  assert.equal(db.hud({...scope,captureStartedAt:start+5000},start+120000),null);
 }));
+test('daily activity separates quotes from cash, scopes city visits and keeps repeated imports idempotent',()=>fixture(db=>{
+ const trade={id:'trade-1',kind:'trade',sessionId:'s1',time:date(1000),data:{item:'Sword',source:'InstantSell',city:'Lymhurst',income:100,expense:0,tax:4}};
+ db.ingest([session(),trade,stat('repair',7,'s1','RepairCosts'),{id:'visit',kind:'location',sessionId:'s1',time:date(10),data:{name:'Lymhurst'}}]);db.ingest([trade]);
+ const row={at:start+500,server:'europe',kind:'saved',city:'Lymhurst',item:'T4_WOOD',quality:1,side:'sell',price:300};
+ db.logActivity([row,row,{...row,kind:'order'},{...row,server:'west'}]);
+ assert.deepEqual(db.priceHistory(row),[{at:row.at,price:300}].map(x=>Object.assign(Object.create(null),x)));
+ const report=db.activityReport({start,end:start+2000,server:'europe'});
+ assert.deepEqual(report.totals,{income:100,expense:7,tax:4,net:89});assert.equal(report.events.length,5);assert.equal(report.events[0].kind,'location');
+ const t=db.summary({sessionId:'s1'}).timeline.at(-1);assert.equal(t.income-t.expense,89);
+}));
 test('replayed events and updated entries do not double session or global totals',()=>fixture(db=>{
  db.ingest([session(),stat('a')]);db.ingest([stat('a')]);assert.equal(db.summary({},start+120000).metrics.Fame,100);
  db.ingest([{...stat('a',150),updatedAtUtc:date(3000)}]);assert.equal(db.summary().metrics.Fame,150);

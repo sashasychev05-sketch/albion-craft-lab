@@ -13,6 +13,7 @@ function contributions(record) {
     const e = d.entry || {}, metric = text(e.valueType);
     return metric ? [[metric, ['ItemQualityRerollResult','ItemQualityRerollAttempt'].includes(metric) ? number(e.itemQuantity) : number(e.value)]] : [];
   }
+  if(record.kind==='trade')return [['tradeIncome',number(d.income)],['tradeExpense',number(d.expense)],['tradeTax',number(d.tax)]];
   if (record.kind !== 'combat') return [];
   const result = [['party' + text(d.metric), number(d.value)]];
   if (d.sourceLocal && ['Damage','Heal','Overheal'].includes(d.metric)) result.push(['local' + d.metric, number(d.value)]);
@@ -38,6 +39,8 @@ class SessionDatabase {
       CREATE TABLE IF NOT EXISTS state(key TEXT PRIMARY KEY, at INTEGER NOT NULL, data TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS cursors(file TEXT PRIMARY KEY, position INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS documents(path TEXT PRIMARY KEY, server TEXT, module TEXT, modified REAL, data TEXT);
+      CREATE TABLE IF NOT EXISTS activity(at INTEGER,kind TEXT,server TEXT,item TEXT,city TEXT,quality INTEGER,side TEXT,price REAL,detail TEXT,PRIMARY KEY(at,kind,server,item,city,quality,side,price,detail));
+      CREATE INDEX IF NOT EXISTS activity_item ON activity(server,item,city,quality,kind,side,at);
       PRAGMA user_version=1;`);
     this.insertRecord = this.db.prepare('INSERT INTO records(id,sid,kind,at,data,updated) VALUES(?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET sid=excluded.sid,kind=excluded.kind,at=excluded.at,data=excluded.data,updated=excluded.updated');
     this.oldRecord = this.db.prepare('SELECT sid,at,data,updated FROM records WHERE id=?');
@@ -120,6 +123,19 @@ class SessionDatabase {
     return {fight:fight?number(fight.damage):null,damage:number(totals.localDamage),silver:number(totals.Silver),
       fame:now-session.start>=60000?number(totals.Fame)*3600000/(now-session.start):null};
   }
+  logActivity(rows){
+    const insert=this.db.prepare('INSERT OR IGNORE INTO activity VALUES(?,?,?,?,?,?,?,?,?)');
+    this.db.exec('BEGIN');try{for(const r of rows)insert.run(r.at,r.kind,r.server,r.item||'',r.city||'',r.quality||0,r.side||'',r.price||0,r.detail||'');this.db.exec('COMMIT');}catch(e){this.db.exec('ROLLBACK');throw e;}
+  }
+  priceHistory({server,item,city,quality,side}){
+    return this.db.prepare("SELECT at,price FROM activity WHERE kind='saved' AND server=? AND item=? AND city=? AND quality=? AND side=? ORDER BY at DESC LIMIT 120").all(server,item,city,quality,side).reverse();
+  }
+  activityReport({start,end,server}){
+    const market=this.db.prepare('SELECT * FROM activity WHERE at>=? AND at<? AND server=? ORDER BY at').all(start,end,server);
+    const session=this.db.prepare("SELECT r.at,r.kind,r.data FROM records r JOIN sessions s ON s.id=r.sid WHERE s.server=? AND r.at>=? AND r.at<? AND (r.kind IN ('location','trade') OR (r.kind='stat' AND json_extract(r.data,'$.data.entry.valueType') IN ('Silver','RepairCosts','PaidSilverForReSpec'))) ORDER BY r.at").all(server,start,end).map(r=>{const d=JSON.parse(r.data).data;return r.kind==='location'?{at:r.at,kind:'location',city:d.name}: r.kind==='trade'?{at:r.at,kind:'trade',...d}:{at:r.at,kind:'silver',source:d.entry.valueType,income:d.entry.valueType==='Silver'?number(d.entry.value):0,expense:d.entry.valueType==='Silver'?0:Math.abs(number(d.entry.value))};});
+    const totals=session.reduce((s,r)=>({income:s.income+number(r.income),expense:s.expense+number(r.expense),tax:s.tax+number(r.tax)}),{income:0,expense:0,tax:0});
+    return {format:1,start,end,server,totals:{...totals,net:totals.income-totals.expense-totals.tax},events:[...market,...session].sort((a,b)=>a.at-b.at)};
+  }
   context() { const row=this.db.prepare("SELECT data FROM state WHERE key='context'").get(); return row?JSON.parse(row.data):null; }
   where(filter={}, alias='s') {
     const clauses=[], values=[];
@@ -137,7 +153,7 @@ class SessionDatabase {
     const damage10=number(rates.damage),healing10=number(rates.heal);
     const durationSeconds=Math.max(0,number(durations.duration)/1000);
     const rows=this.db.prepare(`SELECT r.data FROM records r JOIN sessions s ON s.id=r.sid${w.sql} ORDER BY r.at DESC LIMIT 100`).all(...w.values).map(r=>JSON.parse(r.data));
-    const timeline=this.db.prepare(`SELECT b.minute,SUM(CASE WHEN b.metric='Fame' THEN b.value ELSE 0 END) AS fame,SUM(CASE WHEN b.metric='localDamage' THEN b.value ELSE 0 END) AS damage FROM buckets b JOIN sessions s ON s.id=b.sid${w.sql} GROUP BY b.minute ORDER BY b.minute DESC LIMIT 240`).all(...w.values).reverse();
+    const timeline=this.db.prepare(`SELECT b.minute,SUM(CASE WHEN b.metric='Fame' THEN b.value ELSE 0 END) AS fame,SUM(CASE WHEN b.metric='localDamage' THEN b.value ELSE 0 END) AS damage,SUM(CASE WHEN b.metric IN ('Silver','tradeIncome') THEN b.value ELSE 0 END) AS income,SUM(CASE WHEN b.metric IN ('tradeExpense','tradeTax','RepairCosts','PaidSilverForReSpec') THEN ABS(b.value) ELSE 0 END) AS expense FROM buckets b JOIN sessions s ON s.id=b.sid${w.sql} GROUP BY b.minute ORDER BY b.minute DESC LIMIT 240`).all(...w.values).reverse();
     const locations=this.db.prepare(`SELECT r.data FROM records r JOIN sessions s ON s.id=r.sid${w.sql+(w.sql?' AND ':' WHERE ')}r.kind='location' ORDER BY r.at DESC LIMIT 50`).all(...w.values).map(r=>JSON.parse(r.data));
     const identities=this.db.prepare('SELECT DISTINCT character,server FROM sessions ORDER BY character,server').all();
     return {version:this.version,context,filter,metrics,durationSeconds,sessionCount:durations.count,

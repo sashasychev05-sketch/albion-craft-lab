@@ -3,7 +3,7 @@ const path=require('node:path'),fs=require('node:fs/promises'),{randomUUID}=requ
 const {createLibrary}=require('./avalon-library.cjs');
 const {createRoads}=require('./avalon-roads.cjs'),{createNative}=require('./avalon-native.cjs');
 const M=require('../dist/avalon-model.js');
-function createAvalon({app,ipcMain,dialog,BrowserWindow,screen,desktopCapturer,globalShortcut,net,getMain,origin,getSatLocation,getHud,diagnostic=false}){
+function createAvalon({app,ipcMain,dialog,BrowserWindow,screen,desktopCapturer,globalShortcut,net,getMain,origin,getSatLocation,getHud,onPortal,diagnostic=false}){
  const library=createLibrary({userData:app.getPath('userData'),downloads:app.getPath('downloads')});let overlay=null,selected='',portalContext=null,scanning=false,enabled=false;
  function trusted(event,window,pathname){try{const u=new URL(event.senderFrame.url);return window&&!window.isDestroyed()&&event.sender===window.webContents&&event.senderFrame===window.webContents.mainFrame&&u.protocol==='albion:'&&u.host==='app'&&u.pathname===pathname;}catch{return false;}}
  const mainSender=e=>trusted(e,getMain(),'/index.html'),miniSender=e=>trusted(e,overlay,'/avalon-overlay.html');
@@ -11,7 +11,7 @@ function createAvalon({app,ipcMain,dialog,BrowserWindow,screen,desktopCapturer,g
  const roads=createRoads({userData:app.getPath('userData'),library,onChanged:changed});
  const hud=require('./portal-hud.cjs').createPortalHud({BrowserWindow,screen,origin,getHud,diagnostic});
  const feedback=hud.show;
- const native=createNative({app,ipcMain,dialog,screen,desktopCapturer,globalShortcut,library,roads,mainSender,getMain,changed,show,getSatLocation,getOverlay:()=>overlay,feedback});
+ const native=createNative({app,ipcMain,dialog,screen,desktopCapturer,globalShortcut,library,roads,mainSender,getMain,changed,show,getSatLocation,onPortal,getOverlay:()=>overlay,feedback});
  ipcMain.handle('avalon:roads',async(e,action,args={})=>{if(!mainSender(e))throw Error('Forbidden');if(action==='state')return roads.state();if(action==='start'){throw Error('Начните запись во встроенном сканере.');}else if(action==='stop')roads.stop();else if(action==='remove'){if(typeof args.id!=='string'||args.id.length>100)throw Error('Недопустимый портал.');await roads.remove(args.id);}else if(action==='mark')await roads.mark(args.server,args.id,args.city);else throw Error('Недопустимое действие.');changed();return roads.state();});
  async function show(id,portal=null){const data=await library.read();if(!data.zones.some(z=>z.id===id))throw Error('Зона не найдена в справочнике.');selected=id;portalContext=portal;
   if(overlay&&!overlay.isDestroyed()){overlay.webContents.send('avalon:zone',{zone:data.zones.find(z=>z.id===selected),portal:portalContext});if(!diagnostic)overlay.showInactive();return;}

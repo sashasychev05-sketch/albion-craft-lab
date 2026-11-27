@@ -10,7 +10,8 @@ function create(storage,now=()=>Date.now()){
   if(typeof value!=='string')return NaN;
   return Date.parse(/(?:Z|[+-]\d\d:\d\d)$/i.test(value)?value:value+'Z');
  }
- function observe(rows,source='market'){
+ function observe(rows,source='market',onSaved){
+  const saved=[];
   const entries={...data.entries};
   let changed=false;
   for(const row of rows){
@@ -20,9 +21,9 @@ function create(storage,now=()=>Date.now()){
    if(!Number.isFinite(time)||time<=0||time>now()+60000||!(price>0&&price<=1e12)||prior&&time<=Date.parse(prior.timestamp))continue;
    const entry={price,timestamp:new Date(time).toISOString(),source};
    if(prior?.source==='manual'||prior?.manualTimestamp)entry.manualTimestamp=prior.manualTimestamp||prior.timestamp;
-   entries[address]=entry;changed=true;
+   entries[address]=entry;if(onSaved)saved.push(row);changed=true;
   }
-  if(changed)persist({...data,entries});
+  if(changed){persist({...data,entries});onSaved?.(saved);}
   return changed;
  }
  function observeServer(server,rows,assess){
