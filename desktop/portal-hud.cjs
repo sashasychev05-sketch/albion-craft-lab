@@ -7,7 +7,7 @@ function createPortalHud({BrowserWindow,screen,origin,getHud=async()=>null,diagn
   const id=++revision;clear();
   if(!message){const visible=!!win?.isVisible();win?.destroy();win=null;return visible;}
   const area=screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).workArea;
-  const width=Math.min(405,area.width),height=portal?116:72;
+  const width=Math.min(405,area.width),height=portal?116:bad?112:72;
   // Lower left leaves the Checker map and the game's minimap on the right.
   const bounds=h=>({x:area.x+12,y:area.y+area.height-h-18,width,height:h});
   if(!win||win.isDestroyed()){
