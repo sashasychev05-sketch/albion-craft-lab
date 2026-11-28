@@ -77,16 +77,22 @@ public class GatheringController(TrackingController trackingController, MainWind
 
     public async Task AddOrUpdateAsync(HarvestFinishedObject harvestFinishedObject)
     {
-        if (!SettingsController.CurrentSettings.IsGatheringActive)
-        {
-            return;
-        }
-
         if (harvestFinishedObject.UserObjectId != trackingController.EntityController.LocalUserData.UserObjectId)
         {
             return;
         }
 
+        if (AlbionLabHost.IsEmbedded && AlbionLabSessionBridge.SessionId != Guid.Empty)
+        {
+            var resource = ItemController.GetItemByIndex(harvestFinishedObject.ItemId);
+            AlbionLabSessionBridge.Publish("gather", new {
+                item = resource?.UniqueName ?? harvestFinishedObject.ItemId.ToString(),
+                standard = harvestFinishedObject.StandardAmount,
+                bonus = harvestFinishedObject.CollectorBonusAmount,
+                premium = harvestFinishedObject.PremiumBonusAmount
+            });
+        }
+        if (!SettingsController.CurrentSettings.IsGatheringActive) return;
         var activeSession = GetActiveSession();
         if (activeSession == null)
         {

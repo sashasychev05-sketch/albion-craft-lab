@@ -130,11 +130,18 @@ class SessionDatabase {
   priceHistory({server,item,city,quality,side}){
     return this.db.prepare("SELECT at,price FROM activity WHERE kind='saved' AND server=? AND item=? AND city=? AND quality=? AND side=? ORDER BY at DESC LIMIT 120").all(server,item,city,quality,side).reverse();
   }
+  dailyGathering({start,end,server,character}){
+    if(!Number.isSafeInteger(start)||!Number.isSafeInteger(end)||end<=start||end-start>90000000)throw Error('Выберите дату отчёта.');
+    const scope=this.where({server,character}),where=scope.sql+(scope.sql?' AND ':' WHERE ')+'r.at>=? AND r.at<?',args=[...scope.values,start,end];
+    const resources=this.db.prepare(`SELECT json_extract(r.data,'$.data.item') AS item,COUNT(*) AS actions,SUM(json_extract(r.data,'$.data.standard')) AS standard,SUM(json_extract(r.data,'$.data.bonus')) AS bonus,SUM(json_extract(r.data,'$.data.premium')) AS premium FROM records r JOIN sessions s ON r.sid=s.id ${where} AND r.kind='gather' GROUP BY item ORDER BY standard+bonus+premium DESC,item`).all(...args);
+    const rewards=Object.fromEntries(this.db.prepare(`SELECT json_extract(r.data,'$.data.entry.valueType') AS metric,SUM(json_extract(r.data,'$.data.entry.value')) AS value FROM records r JOIN sessions s ON r.sid=s.id ${where} AND r.kind='stat' AND json_extract(r.data,'$.data.entry.valueType') IN ('Might','Favor') GROUP BY metric`).all(...args).map(r=>[r.metric,r.value]));
+    return {resources,might:rewards.Might||0,favor:rewards.Favor||0};
+  }
   activityReport({start,end,server}){
     const market=this.db.prepare('SELECT * FROM activity WHERE at>=? AND at<? AND server=? ORDER BY at').all(start,end,server);
     const session=this.db.prepare("SELECT r.at,r.kind,r.data FROM records r JOIN sessions s ON s.id=r.sid WHERE s.server=? AND r.at>=? AND r.at<? AND (r.kind IN ('location','trade') OR (r.kind='stat' AND json_extract(r.data,'$.data.entry.valueType') IN ('Silver','RepairCosts','PaidSilverForReSpec'))) ORDER BY r.at").all(server,start,end).map(r=>{const d=JSON.parse(r.data).data;return r.kind==='location'?{at:r.at,kind:'location',city:d.name}: r.kind==='trade'?{at:r.at,kind:'trade',...d}:{at:r.at,kind:'silver',source:d.entry.valueType,income:d.entry.valueType==='Silver'?number(d.entry.value):0,expense:d.entry.valueType==='Silver'?0:Math.abs(number(d.entry.value))};});
     const totals=session.reduce((s,r)=>({income:s.income+number(r.income),expense:s.expense+number(r.expense),tax:s.tax+number(r.tax)}),{income:0,expense:0,tax:0});
-    return {format:1,start,end,server,totals:{...totals,net:totals.income-totals.expense-totals.tax},events:[...market,...session].sort((a,b)=>a.at-b.at)};
+    return {format:1,start,end,server,gathering:this.dailyGathering({start,end,server}),totals:{...totals,net:totals.income-totals.expense-totals.tax},events:[...market,...session].sort((a,b)=>a.at-b.at)};
   }
   context() { const row=this.db.prepare("SELECT data FROM state WHERE key='context'").get(); return row?JSON.parse(row.data):null; }
   where(filter={}, alias='s') {

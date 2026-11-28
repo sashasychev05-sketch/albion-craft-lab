@@ -58,6 +58,7 @@ parentPort.on('message',message=>{
   let result;
   if(message.action==='context')result=store.context();
   else if(message.action==='activity')result=store.logActivity(message.args);
+  else if(message.action==='daily-gathering')result=store.dailyGathering(message.args);
   else if(message.action==='activity-report')result=store.activityReport(message.args);
   else if(message.action==='price-history')result=store.priceHistory(message.args);
   else if(message.action==='hud')result=store.hud(message.args);

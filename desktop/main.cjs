@@ -111,6 +111,7 @@ else {
     ipcMain.handle('session:action',async(event,action,args)=>{
       if(!senderAllowed(event))throw Error('Forbidden');
       if(action==='state')return {settings:gameSession.settings(),engine:statistics.snapshot(),storage:gameSession.status()};
+      if(action==='daily-gathering')return gameSession.request('daily-gathering',args);
       if(action==='query')return sessionSnapshot(args||{});
       if(action==='start'){gameSession.configure({initialized:true,enabled:true});gameSession.wake();await statistics.start();sessionChanged();return sessionSnapshot();}
       if(action==='stop'){gameSession.configure({initialized:true,enabled:false});await statistics.stop();gameSession.wake();sessionChanged();return sessionSnapshot();}

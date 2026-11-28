@@ -24,6 +24,15 @@ test('daily activity separates quotes from cash, scopes city visits and keeps re
  assert.deepEqual(report.totals,{income:100,expense:7,tax:4,net:89});assert.equal(report.events.length,5);assert.equal(report.events[0].kind,'location');
  const t=db.summary({sessionId:'s1'}).timeline.at(-1);assert.equal(t.income-t.expense,89);
 }));
+test('daily gathering counts own recorded yields once and isolates day, character and server',()=>fixture(db=>{
+ const gathered=(id,offset,sid)=>({id,kind:'gather',time:date(offset),sessionId:sid,data:{item:'T5_ORE',standard:3,bonus:1,premium:2}});
+ const first=gathered('one',0,'s1');
+ db.ingest([session(),session('s2','Other','Europe'),session('s3','Alice','America'),first,gathered('two',500,'s1'),gathered('boundary',2000,'s1'),gathered('other',500,'s2'),gathered('west',500,'s3'),stat('might',4.5,'s1','Might')]);db.ingest([first]);
+ const daily=db.dailyGathering({start,end:start+2000,character:'Alice',server:'europe'});
+ assert.deepEqual({...daily.resources[0]},{item:'T5_ORE',actions:2,standard:6,bonus:2,premium:4});
+ assert.equal(daily.might,4.5);assert.equal(daily.favor,0);
+ assert.equal(db.activityReport({start,end:start+2000,server:'europe'}).gathering.resources[0].actions,3);
+}));
 test('replayed events and updated entries do not double session or global totals',()=>fixture(db=>{
  db.ingest([session(),stat('a')]);db.ingest([stat('a')]);assert.equal(db.summary({},start+120000).metrics.Fame,100);
  db.ingest([{...stat('a',150),updatedAtUtc:date(3000)}]);assert.equal(db.summary().metrics.Fame,150);
